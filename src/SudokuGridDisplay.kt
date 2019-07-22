@@ -7,10 +7,25 @@ import ktaf.ui.Hotkey
 import ktaf.ui.elements.UIButton
 import ktaf.ui.layout.GridLayout
 import ktaf.ui.node.UIContainer
+import ktaf.ui.node.push
+import ktaf.ui.node.remove
 import org.lwjgl.glfw.GLFW
 
 class SudokuNodeDisplay(node: KTAFValue<Int>) : UIContainer() {
     private val label = children.add(UIButton("")) {}
+
+    fun red() {
+        label.state.push(HIGHLIGHT_RED)
+    }
+
+    fun green() {
+        label.state.push(HIGHLIGHT_GREEN)
+    }
+
+    fun none() {
+        label.state.remove(HIGHLIGHT_RED)
+        label.state.remove(HIGHLIGHT_GREEN)
+    }
 
     init {
         node.connect { when (it) {
@@ -19,27 +34,36 @@ class SudokuNodeDisplay(node: KTAFValue<Int>) : UIContainer() {
         } }
 
         label.colour(rgba(0.3f, 0.6f, 0.9f, 0f))
+        label.colour[ACTIVE](rgba(0.3f, 0.6f, 0.9f, 0.2f))
+        label.colour[HIGHLIGHT_RED](rgba(0.9f, 0.3f, 0.3f, 0.2f))
+        label.colour[HIGHLIGHT_GREEN](rgba(0.3f, 0.9f, 0.6f, 0.2f))
         label.textColour(rgba(0.1f))
         label.font(Font.DEFAULT_FONT.scaleTo(28f))
 
         label.focused.connect { when (it) {
-            true -> label.colour(rgba(0.3f, 0.6f, 0.9f, 0.4f))
-            false -> label.colour(rgba(0.3f, 0.6f, 0.9f, 0f))
+            true -> label.state.push(ACTIVE)
+            false -> label.state.remove(ACTIVE)
         } }
 
-        (1 .. 9).forEach {
+        (0 .. 9).forEach {
             label.hotkeys.add(Hotkey(GLFW.GLFW_KEY_0 + it))
             label.onKeyPress { e ->
-                if (!focused.get()) return@onKeyPress
+                if (!label.focused.get()) return@onKeyPress
                 val n = e.key - GLFW.GLFW_KEY_0
-                if (n in 1 .. 9) { node(n) }
+                if (n in 0 .. 9) { node(n) }
             }
         }
+    }
+
+    companion object {
+        val HIGHLIGHT_RED = "highlight-red"
+        val HIGHLIGHT_GREEN = "highlight-green"
+        val ACTIVE = "active"
     }
 }
 
 class SudokuGridDisplay(grid: SudokuGrid = SudokuGrid()): UIContainer() {
-    private val nodes = KTAFList<SudokuNodeDisplay>()
+    val nodes = KTAFList<SudokuNodeDisplay>()
 
     override fun draw(context: DrawContext2D, position: vec2, size: vec2) {
         super.draw(context, position, size)
@@ -65,7 +89,7 @@ class SudokuGridDisplay(grid: SudokuGrid = SudokuGrid()): UIContainer() {
 
         for (y in 1 .. 9) {
             for (x in 1 .. 9) {
-                children.add(SudokuNodeDisplay(grid.item(y, x)))
+                nodes.add(SudokuNodeDisplay(grid.item(y, x)))
             }
         }
 
