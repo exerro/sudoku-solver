@@ -1,43 +1,34 @@
-import SudokuNodeDisplay.Companion.HIGHLIGHT_GREEN
-import SudokuNodeDisplay.Companion.HIGHLIGHT_RED
 import ktaf.core.rgba
 import ktaf.core.vec2
 import ktaf.graphics.Font
 import ktaf.ui.elements.UIButton
-import ktaf.ui.elements.UILabel
-import ktaf.ui.node.UIContainer
-import ktaf.ui.node.push
-import ktaf.ui.node.remove
 
-class SudokuGridAction(
+class SudokuGridActionDisplay(
+        val display: SudokuGridSolverDisplay,
         action: String,
-        grid: SudokuGridDisplay,
         red: List<Pair<Int, Int>>,
         green: List<Pair<Int, Int>>
-): UIContainer() {
-    val label = children.add(UIButton(action)) {
-        alignment(vec2(0.5f))
-    }
-
+): UIButton(action) {
     init {
-        label.font(Font.DEFAULT_FONT.scaleTo(24f))
-//        label.colour(rgba())
-        label.textColour(rgba(1f))
+        alignment(vec2(0.5f))
+        font(Font.DEFAULT_FONT.scaleTo(24f))
+        textColour(rgba(1f))
+//        colour(rgba(1f))
 
-        label.onMouseEnter {
+        onMouseEnter {
             red.forEach { (row, col) ->
-                grid.nodes[(row - 1) * 9 + col - 1].red() }
+                display.nodes[(row - 1) * 9 + col - 1].highlight(SudokuNodeSolverDisplayHighlight.RED) }
 
             green.forEach { (row, col) ->
-                grid.nodes[(row - 1) * 9 + col - 1].green() }
+                display.nodes[(row - 1) * 9 + col - 1].highlight(SudokuNodeSolverDisplayHighlight.GREEN) }
         }
 
-        label.onMouseExit {
+        onMouseExit {
             red.forEach { (row, col) ->
-                grid.nodes[(row - 1) * 9 + col - 1].none() }
+                display.nodes[(row - 1) * 9 + col - 1].highlight(SudokuNodeSolverDisplayHighlight.NONE) }
 
             green.forEach { (row, col) ->
-                grid.nodes[(row - 1) * 9 + col - 1].none() }
+                display.nodes[(row - 1) * 9 + col - 1].highlight(SudokuNodeSolverDisplayHighlight.NONE) }
         }
     }
 }
