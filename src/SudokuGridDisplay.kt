@@ -1,19 +1,16 @@
-import ktaf.core.*
+import ktaf.data.ObservableList
 import ktaf.graphics.DrawContext2D
 import ktaf.graphics.Font
-import ktaf.graphics.rectangle
-import ktaf.typeclass.plus
-import ktaf.ui.elements.UIButton
-import ktaf.ui.layout.GridLayout
-import ktaf.ui.node.*
+import ktaf.gui.core.UINode
+import ktaf.gui.elements.Button
+import ktaf.gui.elements.Stack
 import org.lwjgl.glfw.GLFW
 
-class SudokuNodeDisplay(node: SudokuGridItem) : UIButton("") {
-
+class SudokuNodeDisplay(node: SudokuGridItem): Button("") {
     init {
         node.connect { when (it) {
-            0 -> text("")
-            else -> text(it.toString())
+            0 -> text.value = ""
+            else -> text.value = it.toString()
         } }
 
         colour(rgba(0.3f, 0.6f, 0.9f, 0f))
@@ -66,10 +63,10 @@ class SudokuNodeDisplay(node: SudokuGridItem) : UIButton("") {
     }
 }
 
-open class SudokuGridDisplayBase<SudokuNodeDisplay: UINode> : UIContainer() {
-    val nodes = KTAFList<SudokuNodeDisplay>()
+open class SudokuGridDisplayBase<SudokuNodeDisplay: UINode>: Grid() {
+    val nodes = ObservableList<SudokuNodeDisplay>(listOf())
 
-    override fun draw(context: DrawContext2D, position: vec2, size: vec2) {
+    override fun draw() {
         super.draw(context, position, size)
 
         context.draw {

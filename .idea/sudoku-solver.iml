@@ -8,8 +8,9 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="KotlinJavaRuntime" level="project" />
-    <orderEntry type="library" exported="" name="ktaf" level="project" />
-    <orderEntry type="library" name="lwjgl-kt" level="project" />
-    <orderEntry type="library" name="lwjgl" level="project" />
+    <orderEntry type="library" name="open/lwjgl" level="application" />
+    <orderEntry type="library" name="fatlib/ktaf" level="application" />
+    <orderEntry type="library" name="lib/geometry-kt" level="application" />
+    <orderEntry type="library" name="lib/observables" level="application" />
   </component>
 </module>

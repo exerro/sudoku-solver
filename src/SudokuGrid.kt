@@ -1,7 +1,7 @@
-import ktaf.core.KTAFValue
+import observables.Observable
 
-typealias SudokuGridItem = KTAFValue<Int>
+typealias SudokuGridItem = Observable<Int>
 typealias SudokuGrid = List<List<SudokuGridItem>>
 
 fun createEmptySudokuGrid(): SudokuGrid
-        = (1 .. 9).map { (1 .. 9).map { KTAFValue(0) } }
+        = (1 .. 9).map { (1 .. 9).map { Observable(0) } }

@@ -1,14 +1,13 @@
-import ktaf.core.rgba
-import ktaf.core.vec2
+import geometry.vec2
 import ktaf.graphics.Font
-import ktaf.ui.elements.UIButton
+import ktaf.gui.elements.Button
 
 class SudokuGridActionDisplay(
-        val display: SudokuGridSolverDisplay,
+        private val display: SudokuGridSolverDisplay,
         action: String,
         red: List<Pair<Int, Int>>,
         green: List<Pair<Int, Int>>
-): UIButton(action) {
+): Button(action) {
     init {
         alignment(vec2(0.5f))
         font(Font.DEFAULT_FONT.scaleTo(24f))
