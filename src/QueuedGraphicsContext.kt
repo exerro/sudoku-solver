@@ -1,5 +1,6 @@
 import com.exerro.glfw.Window
 import com.exerro.glfw.WindowProperty
+import com.exerro.glfw.data.WindowSize
 import com.exerro.glfw.get
 import org.lwjgl.opengl.GL46C.*
 
@@ -7,7 +8,11 @@ class QueuedGraphicsContext(
         val window: Window
 ): GraphicsContext {
     override fun clear(colour: Colour) {
-        synchronized(queue) { queue.add(Command.Clear(colour)) }
+        synchronized(queue) {
+            queue.clear()
+            queue.add(Command.Clear(colour))
+            nextDirtyIndex = 0
+        }
     }
 
     override fun rectangle(rectangle: Rectangle, colour: Colour) {
@@ -22,35 +27,42 @@ class QueuedGraphicsContext(
         synchronized(queue) { queue.add(Command.Write(text, rectangle, colour, alignment)) }
     }
 
-    fun renderQueue(): Boolean {
-        if (queue.isEmpty()) return false
+    fun makeDirty() {
+        nextDirtyIndex = 0
+    }
 
-        val fbSize = window[WindowProperty.FRAMEBUFFER_SIZE]
+    fun renderChanges(): Boolean {
+        if (nextDirtyIndex >= queue.size) return false
 
-        glViewport(0, 0, fbSize.width, fbSize.height)
-
-        queue.forEach { when (it) {
-            is Command.Clear -> {
-                glClearColor(it.colour.red, it.colour.green, it.colour.blue, it.colour.alpha)
-                glClear(GL_COLOR_BUFFER_BIT)
-            }
-            is Command.Rect -> {
-                println("${it.rectangle} - $fbSize")
-                glUseProgram(rectShader)
-                glUniform4f(rectUniformColour, it.colour.red, it.colour.green, it.colour.blue, it.colour.alpha)
-                glUniform2f(rectUniformPosition, it.rectangle.position.x, it.rectangle.position.y)
-                glUniform2f(rectUniformSize, it.rectangle.size.width, it.rectangle.size.height)
-                glUniform2f(rectUniformViewportSize, fbSize.width.toFloat(), fbSize.height.toFloat())
-                glBindVertexArray(rectVAO)
-                glDrawArrays(GL_TRIANGLES, 0, 6)
-            }
-            is Command.Line -> TODO()
-            is Command.Write -> TODO()
-        } }
-
-        queue.clear()
+        val fbSize = beginRendering()
+        queue.drop(nextDirtyIndex).forEach { renderCommand(it, fbSize) }
+        nextDirtyIndex = queue.size
 
         return true
+    }
+
+    private fun beginRendering(): WindowSize {
+        val fbSize = window[WindowProperty.FRAMEBUFFER_SIZE]
+        glViewport(0, 0, fbSize.width, fbSize.height)
+        return fbSize
+    }
+
+    private fun renderCommand(command: Command, fbSize: WindowSize) = when (command) {
+        is Command.Clear -> {
+            glClearColor(command.colour.red, command.colour.green, command.colour.blue, command.colour.alpha)
+            glClear(GL_COLOR_BUFFER_BIT)
+        }
+        is Command.Rect -> {
+            glUseProgram(rectShader)
+            glUniform4f(rectUniformColour, command.colour.red, command.colour.green, command.colour.blue, command.colour.alpha)
+            glUniform2f(rectUniformPosition, command.rectangle.position.x, command.rectangle.position.y)
+            glUniform2f(rectUniformSize, command.rectangle.size.width, command.rectangle.size.height)
+            glUniform2f(rectUniformViewportSize, fbSize.width.toFloat(), fbSize.height.toFloat())
+            glBindVertexArray(rectVAO)
+            glDrawArrays(GL_TRIANGLES, 0, 6)
+        }
+        is Command.Line -> TODO()
+        is Command.Write -> TODO()
     }
 
     private val queue: MutableList<Command> = mutableListOf()
@@ -61,6 +73,7 @@ class QueuedGraphicsContext(
     private val rectUniformPosition = glGetUniformLocation(rectShader, "u_position")
     private val rectUniformSize = glGetUniformLocation(rectShader, "u_size")
     private val rectUniformViewportSize = glGetUniformLocation(rectShader, "u_viewport")
+    private var nextDirtyIndex = 0
 
     private sealed class Command {
         data class Clear(val colour: Colour): Command()
