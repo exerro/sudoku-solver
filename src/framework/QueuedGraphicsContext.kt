@@ -57,14 +57,12 @@ class QueuedGraphicsContext(
 
     fun renderAll() {
         lock.lock()
-
         synchronized(queue) {
             val fbSize = window[WindowProperty.FRAMEBUFFER_SIZE]
             glViewport(0, 0, fbSize.width, fbSize.height)
             queue.forEach { renderCommand(it, fbSize) }
             rendered = queue.size
         }
-
         lock.unlock()
     }
 

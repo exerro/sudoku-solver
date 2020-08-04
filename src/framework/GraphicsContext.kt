@@ -2,10 +2,9 @@ package framework
 
 /** Context object allowing graphical operations. */
 interface GraphicsContext {
-    /** Begin a batch of drawing operations. This will likely be called
-     *  externally. There is no constraint on the number of times this is
-     *  called before operations are presented to the screen, but each [begin()]
-     *  must be matched by a [finish()]. */
+    /** Begin a batch of drawing operations. There is no constraint on the
+     *  number of times this is called before operations are presented to the
+     *  screen, but each [begin()] must be matched by a [finish()]. */
     fun begin()
 
     /** Clear the screen, filling it with [colour]. */
