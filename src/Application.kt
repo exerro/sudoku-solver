@@ -4,7 +4,10 @@ import com.exerro.glfw.get
 import com.exerro.glfw.gl.GLContext
 import com.exerro.glfw.setHandler
 import framework.*
+import sudoku.Grid
+import sudoku.drawGrid
 import java.lang.Math.pow
+import kotlin.math.min
 import kotlin.math.pow
 
 class Application(
@@ -13,49 +16,39 @@ class Application(
         graphics: QueuedGraphicsContext
 ): BaseApplication(window, glc, graphics) {
     //////////////////////////////////////////////////////////////////////////////////////
-    var thickness = 1f
+    val grid = Grid.EMPTY.mapLocations { it }
 
-    override fun initialise() {
-        window.setHandler(SCROLL_CALLBACK) { _, dy ->
-            thickness += dy.toFloat()
+    fun draw() {
+        val screenSize = window[FRAMEBUFFER_SIZE].size
+        val size = Size(min(screenSize.width, screenSize.height) - 100f)
+        val offset = Position.origin + (screenSize - size) / 2f
+        val rect = Rectangle(offset, size)
+
+        graphics.clear(Colour.white)
+        graphics.drawGrid(grid, rect) { item, area ->
+            if (item.abs % 7 != 2 && item.abs % 6 != 0) {
+                val textArea = Rectangle(
+                        area.position + area.size.vertical * 0.3f,
+                        area.size * Size(1f, 0.4f)
+                )
+                graphics.write("${item.row},${item.col}", textArea, Colour.blue)
+            }
+            else {
+                val textArea = Rectangle(
+                        area.position + area.size.vertical * 0.15f,
+                        area.size * Size(1f, 0.8f)
+                )
+                graphics.write(item.abs.toString().takeLast(1), textArea, Colour.grey)
+            }
         }
     }
 
+    override fun initialise() {
+        draw()
+    }
+
     override fun update() {
-        graphics.clear(Colour.blue)
-
-        var y = 0f
-
-        setOf(14f, 16f, 20f, 24f, 28f, 32f, 48f, 52f, 64f, 72f, 92f, 108f, 128f, 256f).forEach { size ->
-            graphics.write(
-                    text = "$size: Hello world",
-                    rectangle = Rectangle(0f, y, 0f, size),
-                    colour = Colour.white,
-                    alignment = Alignment.Left
-            )
-            y += size
-        }
-        val cp = window[CURSOR_POSITION]
-        val sz = window[FRAMEBUFFER_SIZE]
-        val min = cp.x.toFloat() / sz.width
-        val max = cp.y.toFloat() / sz.height
-
-        graphics.write(
-                text = "${min.pretty()}, ${(min + (1 - min) * max).pretty()}",
-                rectangle = Rectangle(sz.width - 200f, sz.height - 64f, 200f, 64f),
-                colour = Colour.white,
-                alignment = Alignment.Right
-        )
-
-        graphics.line(
-                Position(100f),
-                window[CURSOR_POSITION].let { (x, y) -> Position(x.toFloat(), y.toFloat()) },
-                Colour.red,
-                thickness,
-                Colour.green
-        )
-
-        graphics.rectangle(Rectangle(95f, 95f, 10f, 10f), Colour.purple)
+        draw()
     }
 
     //////////////////////////////////////////////////////////////////////////////////////

@@ -3,8 +3,19 @@ package framework
 import com.exerro.glfw.data.WindowPosition
 import com.exerro.glfw.data.WindowSize
 
-data class Position(val x: Float, val y: Float = x)
-data class Size(val width: Float, val height: Float = width)
+data class Position(val x: Float, val y: Float = x) {
+    companion object {
+        val origin = Position(0f, 0f)
+    }
+}
+data class Size(val width: Float, val height: Float = width) {
+    companion object {
+        val zero = Size(0f, 0f)
+        val one = Size(1f, 1f)
+        val horizontal = Size(1f, 0f)
+        val vertical = Size(0f, 1f)
+    }
+}
 data class Rectangle(val position: Position, val size: Size) {
     constructor(x: Float, y: Float, width: Float, height: Float): this(Position(x, y), Size(width, height))
     constructor(position: Float, size: Float): this(Position(position), Size(size))

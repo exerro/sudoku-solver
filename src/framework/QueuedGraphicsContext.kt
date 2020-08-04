@@ -108,11 +108,8 @@ class QueuedGraphicsContext(
             glBindTexture(GL_TEXTURE_2D, font.textureID)
             glUniform4f(textUniformColour, command.colour.red, command.colour.green, command.colour.blue, command.colour.alpha)
             glUniform2f(textUniformViewportSize, fbSize.width.toFloat(), fbSize.height.toFloat())
+            glUniform2f(textUniformThreshold, minT, maxT)
             glBindVertexArray(vao)
-
-            if (window.isMouseDown(MouseButton.LEFT))
-                 glUniform2f(textUniformThreshold, minT, minT + (1 - minT) * maxT)
-            else glUniform2f(textUniformThreshold, minT, maxT)
 
             command.text.forEach {
                 val (dx, dy) = font.quadDelta[it] ?: 0f to 0f
