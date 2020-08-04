@@ -77,10 +77,16 @@ abstract class BaseApplication(
             GL.createCapabilities()
 
             while (window.valid) {
-                if (internalGraphics.renderChanges()) glc.swapBuffers()
+                if (internalGraphics.hasChanges()) {
+                    glc.swapBuffers()
+                    internalGraphics.renderChanges()
+                    glc.swapBuffers()
+                }
                 else Thread.sleep(UPDATE_DELAY)
             }
         }
+
+        window.setHandler(DAMAGED) { internalGraphics.makeDirty() }
     }
 
     companion object {
@@ -117,6 +123,29 @@ abstract class BaseApplication(
             GLFW.glfwMakeContextCurrent(MemoryUtil.NULL)
 
             return graphics
+        }
+
+        fun mainLoop(instance: GLFWInstance, application: BaseApplication) {
+            application.window[VISIBLE] = true
+
+            var needsToUpdate = true
+
+            while (!application.window[SHOULD_CLOSE]) {
+                instance.pollEvents()
+
+                if (needsToUpdate) {
+                    needsToUpdate = false
+                    application.submitWork("Application.update()") {
+                        application.internalGraphics.begin()
+                        application.update()
+                        application.internalGraphics.finish()
+                        needsToUpdate = true
+                    }
+                }
+            }
+
+            application.window.destroy()
+            instance.terminate()
         }
     }
 }
