@@ -20,6 +20,7 @@ class QueuedGraphicsContext(
 ): GraphicsContext {
     override fun begin() {
         lock.lock()
+        ++using
     }
 
     override fun clear(colour: Colour) {
@@ -43,7 +44,7 @@ class QueuedGraphicsContext(
     }
 
     override fun finish() {
-        lock.unlock()
+        if (--using == 0) lock.unlock()
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -157,6 +158,7 @@ class QueuedGraphicsContext(
     private val lineUniformThickness = glGetUniformLocation(lineShader, "u_thickness")
     private val lineUniformViewportSize = glGetUniformLocation(lineShader, "u_viewport")
 
+    private var using = 0
     private var rendered = 0
     private val font = Font(FontData.MONOID)
 

@@ -21,6 +21,11 @@ abstract class BaseApplication(
     /** Called once when the application starts. */
     abstract fun initialise()
 
+    /** Called whenever application should redraw its entire contents, for
+     *  example due to the window resizing or being damaged. Also called once
+     *  after initialisation. */
+    abstract fun redraw()
+
     /** Called repeatedly while the application is running. Note, the intervals
      *  between calls may vary. */
     abstract fun update()
@@ -30,6 +35,8 @@ abstract class BaseApplication(
     /** Graphics context which is handled by the application internally. Used
      *  for all drawing operations. */
     val graphics: GraphicsContext = internalGraphics
+
+    val windowSize: Size get() = window[FRAMEBUFFER_SIZE].let { (w, h) -> Size(w.toFloat(), h.toFloat()) }
 
     /** Run a named function. */
     fun submitWork(name: String, fn: () -> Unit) {
@@ -44,8 +51,8 @@ abstract class BaseApplication(
 
     init {
         internalGraphics.clear(Colour.white)
-        glc.swapBuffers()
         internalGraphics.renderAll()
+        glc.swapBuffers()
 
         // start a background worker thread, taking work items from [workQueue]
         // and running them in-order
@@ -91,7 +98,12 @@ abstract class BaseApplication(
             }
         }
 
-        window.setHandler(DAMAGED) { internalGraphics.makeDirty() }
+        window.setHandler(DAMAGED) {
+            internalGraphics.begin()
+            internalGraphics.makeDirty()
+            redraw()
+            internalGraphics.finish()
+        }
     }
 
     companion object {

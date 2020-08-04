@@ -40,7 +40,7 @@ fun <Item> GraphicsContext.drawGrid(
 }
 
 data class DrawGridSettings(
-        val minorLineColour: Colour = Colour.lightGrey,
+        val minorLineColour: Colour = Colour.lighterGrey,
         val majorLineColour: Colour = Colour.grey,
         val minorLineThickness: Float = 1f,
         val majorLineThickness: Float = 2f

@@ -1,14 +1,8 @@
 import com.exerro.glfw.Window
-import com.exerro.glfw.WindowProperty.*
-import com.exerro.glfw.get
 import com.exerro.glfw.gl.GLContext
-import com.exerro.glfw.setHandler
 import framework.*
 import sudoku.Grid
 import sudoku.drawGrid
-import java.lang.Math.pow
-import kotlin.math.min
-import kotlin.math.pow
 
 class Application(
         window: Window.Default,
@@ -18,37 +12,47 @@ class Application(
     //////////////////////////////////////////////////////////////////////////////////////
     val grid = Grid.EMPTY.mapLocations { it }
 
-    fun draw() {
-        val screenSize = window[FRAMEBUFFER_SIZE].size
-        val size = Size(min(screenSize.width, screenSize.height) - 100f)
-        val offset = Position.origin + (screenSize - size) / 2f
-        val rect = Rectangle(offset, size)
+    override fun redraw() {
+        val rect = Rectangle(Position.origin, windowSize)
+                .minSquare()
+                .resizeBy(0.9f)
+
+        val colours = listOf(
+                Colour.black,
+                Colour.charcoal,
+                Colour.darkGrey,
+                Colour.grey,
+                Colour.lighterGrey,
+                Colour.lightGrey,
+                Colour.ultraLightGrey
+        )
 
         graphics.clear(Colour.white)
         graphics.drawGrid(grid, rect) { item, area ->
             if (item.abs % 7 != 2 && item.abs % 6 != 0) {
-                val textArea = Rectangle(
-                        area.position + area.size.vertical * 0.3f,
-                        area.size * Size(1f, 0.4f)
-                )
+                val textArea = area.resizeVertical(area.size.height * 0.4f)
                 graphics.write("${item.row},${item.col}", textArea, Colour.blue)
             }
             else {
-                val textArea = Rectangle(
-                        area.position + area.size.vertical * 0.15f,
-                        area.size * Size(1f, 0.8f)
-                )
+                val textArea = area
+                        .resizeVertical(area.size.height * 0.8f)
+                        .translateVertical(area.size.height * 0.05f)
                 graphics.write(item.abs.toString().takeLast(1), textArea, Colour.grey)
             }
         }
+
+        Rectangle(Position.origin, Size(100f, windowSize.height))
+                .splitVertical(colours.size)
+                .zip(colours)
+                .forEach { (rect, colour) -> graphics.rectangle(rect, colour) }
     }
 
     override fun initialise() {
-        draw()
+
     }
 
     override fun update() {
-        draw()
+
     }
 
     //////////////////////////////////////////////////////////////////////////////////////

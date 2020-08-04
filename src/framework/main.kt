@@ -10,6 +10,7 @@ fun main() {
     val app = Application(window, glc, graphics)
 
     app.initialise()
+    app.redraw()
 
     BaseApplication.mainLoop(instance, app)
 }
