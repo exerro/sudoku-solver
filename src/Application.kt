@@ -2,6 +2,7 @@ import com.exerro.glfw.Window
 import com.exerro.glfw.WindowProperty.*
 import com.exerro.glfw.get
 import com.exerro.glfw.gl.GLContext
+import com.exerro.glfw.setHandler
 import framework.*
 import java.lang.Math.pow
 import kotlin.math.pow
@@ -12,8 +13,15 @@ class Application(
         graphics: QueuedGraphicsContext
 ): BaseApplication(window, glc, graphics) {
     //////////////////////////////////////////////////////////////////////////////////////
+    var thickness = 1f
 
     override fun initialise() {
+        window.setHandler(SCROLL_CALLBACK) { _, dy ->
+            thickness += dy.toFloat()
+        }
+    }
+
+    override fun update() {
         graphics.clear(Colour.blue)
 
         var y = 0f
@@ -38,9 +46,16 @@ class Application(
                 colour = Colour.white,
                 alignment = Alignment.Right
         )
-    }
 
-    override fun update() {
+        graphics.line(
+                Position(100f),
+                window[CURSOR_POSITION].let { (x, y) -> Position(x.toFloat(), y.toFloat()) },
+                Colour.red,
+                thickness,
+                Colour.green
+        )
+
+        graphics.rectangle(Rectangle(95f, 95f, 10f, 10f), Colour.purple)
     }
 
     //////////////////////////////////////////////////////////////////////////////////////

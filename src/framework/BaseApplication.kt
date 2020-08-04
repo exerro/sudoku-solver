@@ -5,6 +5,8 @@ import com.exerro.glfw.WindowProperty.*
 import com.exerro.glfw.data.WindowPosition
 import com.exerro.glfw.gl.GLContext
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFW.GLFW_SAMPLES
+import org.lwjgl.glfw.GLFW.glfwWindowHint
 import org.lwjgl.opengl.GL
 import org.lwjgl.system.MemoryUtil
 import java.util.concurrent.ArrayBlockingQueue
@@ -41,10 +43,14 @@ abstract class BaseApplication(
     private var workStartTime: Long = 0L
 
     init {
+        internalGraphics.clear(Colour.white)
+        glc.swapBuffers()
+        internalGraphics.renderAll()
+
         // start a background worker thread, taking work items from [workQueue]
         // and running them in-order
         thread(start = true, isDaemon = true) {
-            while (true) {
+            while (window.valid) {
                 val (name, fn) = workQueue.take()
                 workStartTime = System.currentTimeMillis()
                 currentWork = name
@@ -56,7 +62,7 @@ abstract class BaseApplication(
         // start a background thread watching for worker tasks taking more than
         // [WORKER_TIMEOUT] to run; if one is found, print a warning message
         thread(start = true, isDaemon = true) {
-            while (true) when (val work = currentWork) {
+            while (window.valid) when (val work = currentWork) {
                 null -> Thread.sleep(WORKER_TIMEOUT)
                 else -> {
                     val currentTime = System.currentTimeMillis()
@@ -77,9 +83,8 @@ abstract class BaseApplication(
             GL.createCapabilities()
 
             while (window.valid) {
-                if (internalGraphics.hasChanges()) {
-                    glc.swapBuffers()
-                    internalGraphics.renderChanges()
+                if (internalGraphics.isDirty()) {
+                    internalGraphics.renderAll()
                     glc.swapBuffers()
                 }
                 else Thread.sleep(UPDATE_DELAY)
@@ -95,6 +100,8 @@ abstract class BaseApplication(
         const val WORKER_TIMEOUT = 1000L
 
         fun createWindowAndContext(): Pair<Window.Default, GLContext> {
+            glfwWindowHint(GLFW_SAMPLES, 4)
+
             val (window, glc) = WindowSettings.default
                     .set(TITLE, "Sudoku Solver")
                     .set(VISIBLE, false)
