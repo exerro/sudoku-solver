@@ -1,6 +1,5 @@
 package framework
 
-import Application
 import com.exerro.glfw.*
 import com.exerro.glfw.WindowProperty.*
 import com.exerro.glfw.data.*
@@ -16,33 +15,31 @@ import java.util.concurrent.BlockingQueue
 import kotlin.concurrent.thread
 
 abstract class BaseApplication internal constructor(
+        /** TODO */
         val window: Window.Default,
-        private val glc: GLContext,
-        private val internalGraphics: QueuedGraphicsContext
+        /** Graphics context which is handled by the application internally. Used
+         *  for all drawing operations. */
+        val graphics: GraphicsContext
 ) {
     /** Called once before the application starts. */
-    abstract fun initialise()
+    open fun initialise() {}
 
     /** Called whenever application should redraw its entire contents, for
      *  example due to the window resizing or being damaged. Also called once
      *  after initialisation. */
-    abstract fun redraw()
+    open fun redraw() {}
 
     /** Called repeatedly while the application is running. Note, the intervals
      *  between calls may vary. */
-    abstract fun update()
+    open fun update() {}
 
     /** Called once when the mouse is pressed. */
-    abstract fun mousePressed(position: Position, leftClick: Boolean, modifiers: Set<MouseModifier>)
+    open fun mousePressed(position: Position, leftClick: Boolean, modifiers: Set<MouseModifier>) {}
 
     /** Called once when a key is pressed. */
-    abstract fun keyPressed(key: Key, modifiers: Set<KeyModifier>)
+    open fun keyPressed(key: Key, modifiers: Set<KeyModifier>) {}
 
     ////////////////////////////////////////////////////////////////////////////
-
-    /** Graphics context which is handled by the application internally. Used
-     *  for all drawing operations. */
-    val graphics: GraphicsContext = internalGraphics
 
     /** Size of the window in pixels. This may change if the window is resized. */
     val windowSize: Size get() = window[FRAMEBUFFER_SIZE].let { (w, h) -> Size(w.toFloat(), h.toFloat()) }
@@ -61,10 +58,10 @@ abstract class BaseApplication internal constructor(
     companion object {
         const val REFRESH_RATE = 60
         const val UPDATE_DELAY = 1000L / REFRESH_RATE
-        const val WORKER_TIMEOUT = 1000L
+        const val WORK_TIMEOUT = 1000L
 
         /** Create a centred window and an OpenGL context. */
-        internal fun createWindowAndContext(): Pair<Window.Default, GLContext> {
+        private fun createWindowAndContext(): Pair<Window.Default, GLContext> {
             glfwWindowHint(GLFW_SAMPLES, 4)
 
             val (window, glc) = WindowSettings.default
@@ -88,7 +85,7 @@ abstract class BaseApplication internal constructor(
         }
 
         /** Create a graphics context for the window given. */
-        internal fun createGraphics(window: Window): QueuedGraphicsContext {
+        private fun createGraphics(window: Window): QueuedGraphicsContext {
             GLFW.glfwMakeContextCurrent(window.glfwID)
             GL.createCapabilities()
 
@@ -97,11 +94,11 @@ abstract class BaseApplication internal constructor(
             }
         }
 
-        /** Start background threads for various tasks of the application. */
-        internal fun startBackgroundThreads(application: BaseApplication) {
-            // THREAD: work
-            // start a background worker thread, taking work items from [workQueue]
-            // and running them in-order
+        /** Start a background worker thread, taking work items from [workQueue]
+         *  and running them in-order. */
+        private fun startApplicationWorkThread(
+                application: BaseApplication
+        ) {
             thread(start = true, isDaemon = true) {
                 while (application.window.valid) {
                     val (name, fn) = application.workQueue.take()
@@ -111,36 +108,45 @@ abstract class BaseApplication internal constructor(
                     application.currentWork = null
                 }
             }
+        }
 
-            // THREAD: work monitor
-            // start a background thread watching for worker tasks taking more than
-            // [WORKER_TIMEOUT] to run; if one is found, print a warning message
+        /** Start a thread watching for worker tasks taking more than
+         *  [WORK_TIMEOUT] to run; if one is found, print a warning message. */
+        private fun startApplicationWorkMonitorThread(
+                application: BaseApplication
+        ) {
             thread(start = true, isDaemon = true) {
                 while (application.window.valid) when (val work = application.currentWork) {
-                    null -> Thread.sleep(WORKER_TIMEOUT)
+                    null -> Thread.sleep(WORK_TIMEOUT)
                     else -> {
                         val currentTime = System.currentTimeMillis()
-                        if (currentTime - application.workStartTime > WORKER_TIMEOUT) {
+                        if (currentTime - application.workStartTime > WORK_TIMEOUT) {
                             println("\u001b[33mWarning: '$work' has been running for over 1 second!\u001b[0m")
                             application.currentWork = null
                         }
                         else {
-                            Thread.sleep(application.workStartTime + WORKER_TIMEOUT - currentTime)
+                            Thread.sleep(application.workStartTime + WORK_TIMEOUT - currentTime)
                         }
                     }
                 }
             }
+        }
 
-            // THREAD: render
-            // start a background render thread to render changes
+        /** Start a thread to render changes to an application's graphics
+         *  context and present them to the screen. */
+        private fun startApplicationRenderThread(
+                glc: GLContext,
+                application: BaseApplication,
+                graphics: QueuedGraphicsContext
+        ) {
             thread(start = true, isDaemon = true) {
                 GLFW.glfwMakeContextCurrent(application.window.glfwID)
                 GL.createCapabilities()
 
                 while (application.window.valid) {
-                    if (application.internalGraphics.isDirty()) {
-                        application.internalGraphics.renderAll()
-                        application.glc.swapBuffers()
+                    if (graphics.isDirty()) {
+                        graphics.renderAll()
+                        glc.swapBuffers()
                     }
                     else Thread.sleep(UPDATE_DELAY)
                 }
@@ -148,9 +154,12 @@ abstract class BaseApplication internal constructor(
         }
 
         /** Set window callbacks mapping to the application's callbacks. */
-        internal fun setApplicationCallbacks(application: BaseApplication) {
+        private fun setApplicationCallbacks(
+                application: BaseApplication,
+                graphics: QueuedGraphicsContext
+        ) {
             application.window.setHandler(DAMAGED) {
-                application.internalGraphics.makeDirty()
+                graphics.makeDirty()
                 application.redraw()
             }
 
@@ -165,32 +174,35 @@ abstract class BaseApplication internal constructor(
             }
         }
 
-        /** Run the application's main loop. */
-        internal fun mainLoop(instance: GLFWInstance, application: BaseApplication) {
-            application.window[VISIBLE] = true
-
+        /** Don't ask. */
+        private fun drawStupidSplashScreen(
+                instance: GLFWInstance,
+                application: BaseApplication,
+                graphics: GraphicsContext
+        ) {
             val (benArea, descArea) = Rectangle(Position.origin, application.windowSize)
                     .resizeVertical(128f)
                     .splitVertical(0.7f)
 
             fun draw(alpha: Float) {
-                application.internalGraphics.begin()
-                application.internalGraphics.clear(Colour.white)
-                application.internalGraphics.write("Ben is awesome", benArea, Colour.cyan.withAlpha(alpha))
-                application.internalGraphics.write("Ben's Sudoku Engine", descArea, Colour.lightGrey.withAlpha(alpha))
-                application.internalGraphics.finish()
+                graphics.begin()
+                graphics.clear(Colour.white)
+                graphics.write("Ben is awesome", benArea, Colour.cyan.withAlpha(alpha))
+                graphics.write("Ben's Sudoku Engine", descArea, Colour.lightGrey.withAlpha(alpha))
+                graphics.finish()
                 Thread.sleep(5)
                 instance.pollEvents()
             }
 
-//            repeat(100) { draw(it / 100f) }
-//            repeat(100) { draw(1f) }
-//            repeat(100) { draw(1 - it / 100f) }
-//            application.internalGraphics.clear(Colour.white)
-//            Thread.sleep(500)
+            repeat(100) { draw(it / 100f) }
+            repeat(100) { draw(1f) }
+            repeat(100) { draw(1 - it / 100f) }
+            graphics.clear(Colour.white)
+            Thread.sleep(500)
+        }
 
-            application.redraw()
-
+        /** Run the application's main loop. */
+        private fun mainLoop(instance: GLFWInstance, application: BaseApplication) {
             var needsToUpdate = true
 
             while (!application.window[SHOULD_CLOSE]) {
@@ -208,18 +220,23 @@ abstract class BaseApplication internal constructor(
             application.window.destroy()
             instance.terminate()
         }
+
+        fun <T: BaseApplication> launch(fn: (Window.Default, GraphicsContext) -> T) {
+            val instance = GLFWInstance.createInitialised()
+            val (window, glc) = createWindowAndContext()
+            val graphics = createGraphics(window)
+            val app = fn(window, graphics)
+
+            app.initialise()
+
+            startApplicationWorkThread(app)
+            startApplicationWorkMonitorThread(app)
+            startApplicationRenderThread(glc, app, graphics)
+            setApplicationCallbacks(app, graphics)
+            app.window[VISIBLE] = true
+            drawStupidSplashScreen(instance, app, graphics)
+            app.redraw()
+            mainLoop(instance, app)
+        }
     }
-}
-
-fun main() {
-    val instance = GLFWInstance.createInitialised()
-    val (window, glc) = BaseApplication.createWindowAndContext()
-    val graphics = BaseApplication.createGraphics(window)
-    val app = Application(window, glc, graphics)
-
-    app.initialise()
-
-    BaseApplication.startBackgroundThreads(app)
-    BaseApplication.setApplicationCallbacks(app)
-    BaseApplication.mainLoop(instance, app)
 }

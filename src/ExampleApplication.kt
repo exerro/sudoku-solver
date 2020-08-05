@@ -1,22 +1,41 @@
 import com.exerro.glfw.Window
-import com.exerro.glfw.data.Key
-import com.exerro.glfw.data.KeyModifier
 import com.exerro.glfw.data.MouseModifier
-import com.exerro.glfw.gl.GLContext
 import framework.*
-import framework.internal.QueuedGraphicsContext
 import sudoku.*
 import kotlin.math.abs
 
-class Application internal constructor(
+// Main is the first function to run.
+fun main() {
+    // Launch the application. The :: is a "method reference" - basically this
+    // is saying "launch an application using this method reference
+    // (::ExampleApplication) to create the application."
+    BaseApplication.launch(::ExampleApplication)
+}
+
+/** Example application showing roughly how to create an application, respond to
+ *  events, draw to the screen, and use the grid utilities provided. */
+class ExampleApplication(
+        // The constructor takes a window, a graphics context, and a GL context
+        // and simply passes those to the constructor of "BaseApplication",
+        // which is the class that ExampleApplication extends.
+        // The window is a handle to the window being shown on the screen. It
+        // can be used to do more advanced things like setting event callbacks,
+        // setting size limits, querying whether keys are pressed etc.
         window: Window.Default,
-        glc: GLContext,
-        graphics: QueuedGraphicsContext
-): BaseApplication(window, glc, graphics) {
-    //////////////////////////////////////////////////////////////////////////////////////
+        // The graphics context handles all drawing operations like drawing
+        // rectangles and writing text. Most graphics operations use rectangles
+        // or positions.
+        graphics: GraphicsContext
+): BaseApplication(window, graphics) {
+    // Load a grid from the string GRID1 (at the bottom) and store this in the
+    // field 'grid'.
     val grid = Grid.load(GRID1)
+    /** Whether to draw a grid or not. */
     var drawGrid = true
 
+    // Overrides the default 'redraw' function inherited from BaseApplication,
+    // which is called for you automatically in response to certain events like
+    // starting up or having the window resized.
     override fun redraw() {
         val rect = Rectangle(Position.origin, windowSize)
                 .minSquare()
@@ -54,23 +73,11 @@ class Application internal constructor(
 
     }
 
-    override fun update() {
-
-    }
-
     override fun mousePressed(position: Position, leftClick: Boolean, modifiers: Set<MouseModifier>) {
         drawGrid = !drawGrid
         redraw()
     }
-
-    override fun keyPressed(key: Key, modifiers: Set<KeyModifier>) {
-
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////
 }
-
-private fun Float.pretty() = (this * 100).toInt() / 100f
 
 const val GRID1 = """
 0 4 0 0 0 0 1 7 9 
