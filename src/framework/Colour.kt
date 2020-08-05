@@ -1,6 +1,7 @@
 package framework
 
 import java.util.*
+import kotlin.math.sqrt
 
 /** RGBA colour object. */
 @Suppress("UNUSED_PARAMETER")
@@ -25,6 +26,7 @@ class Colour private constructor(
         val blue = rgb(0.0, 0.4, 0.9)
 
         val yellow = rgb(0.9, 0.9, 0.3)
+        val orange = rgb(0.9, 0.6, 0.3)
         val pink = rgb(0.9, 0.3, 0.9)
         val purple = rgb(0.45, 0.0, 0.7)
         val cyan = rgb(0.3, 0.6, 0.9)
@@ -51,6 +53,14 @@ class Colour private constructor(
         fun rgb(red: Double, green: Double, blue: Double, ignored: Double = 1.0) = rgba(red, green, blue, 1.0)
         /** Create a greyscale colour from its brightness and optional alpha component. */
         fun greyscale(value: Double, alpha: Double = 1.0) = rgba(value, value, value, alpha)
+
+        fun mix(ratio: Float, a: Colour, b: Colour): Colour {
+            val red = sqrt(a.red * a.red * (1 - ratio) + b.red * b.red * ratio)
+            val green = sqrt(a.green * a.green * (1 - ratio) + b.green * b.green * ratio)
+            val blue = sqrt(a.blue * a.blue * (1 - ratio) + b.blue * b.blue * ratio)
+            val alpha = a.alpha * (1 - ratio) + b.alpha * ratio
+            return Colour(red, green, blue, alpha)
+        }
     }
 }
 

@@ -3,8 +3,7 @@ package framework
 import Application
 import com.exerro.glfw.*
 import com.exerro.glfw.WindowProperty.*
-import com.exerro.glfw.data.WindowPosition
-import com.exerro.glfw.data.WindowSize
+import com.exerro.glfw.data.*
 import com.exerro.glfw.gl.GLContext
 import framework.internal.QueuedGraphicsContext
 import org.lwjgl.glfw.GLFW
@@ -32,6 +31,12 @@ abstract class BaseApplication internal constructor(
     /** Called repeatedly while the application is running. Note, the intervals
      *  between calls may vary. */
     abstract fun update()
+
+    /** Called once when the mouse is pressed. */
+    abstract fun mousePressed(position: Position, leftClick: Boolean, modifiers: Set<MouseModifier>)
+
+    /** Called once when a key is pressed. */
+    abstract fun keyPressed(key: Key, modifiers: Set<KeyModifier>)
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -147,6 +152,16 @@ abstract class BaseApplication internal constructor(
             application.window.setHandler(DAMAGED) {
                 application.internalGraphics.makeDirty()
                 application.redraw()
+            }
+
+            application.window.setHandler(KEY_CALLBACK) { key, pressed, modifiers, _ ->
+                if (pressed) application.keyPressed(key, modifiers)
+            }
+
+            application.window.setHandler(MOUSE_BUTTON_CALLBACK) { button, pressed, modifiers ->
+                val cursorPosition = application.window[CURSOR_POSITION]
+                val position = Position(cursorPosition.x.toFloat(), cursorPosition.y.toFloat())
+                if (pressed) application.mousePressed(position, button == MouseButton.LEFT, modifiers)
             }
         }
 

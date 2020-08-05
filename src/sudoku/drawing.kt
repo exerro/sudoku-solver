@@ -2,16 +2,12 @@ package sudoku
 
 import framework.*
 
-/** Draw a sudoku grid within [rectangle] by drawing the major and minor lines
- *  and then the items within the grid. [settings] controls the colour and
- *  thickness of the major and minor lines but defaults to using 2px grey and
- *  1px lighterGrey respectively. [drawItem] accepts the item to draw, the
- *  rectangle to draw it within, and the location of the item. */
-fun <Item> GraphicsContext.drawGrid(
-        grid: Grid<Item>,
+/** Draw the major and minor lines of a sudoku grid [settings] controls the
+ *  colour and thickness of the major and minor lines but defaults to using 2px
+ *  grey and 1px lighterGrey respectively. */
+fun GraphicsContext.drawGridlines(
         rectangle: Rectangle,
-        settings: DrawGridSettings = DrawGridSettings.DEFAULT,
-        drawItem: (Item, Rectangle, GridLocation) -> Unit
+        settings: DrawGridSettings = DrawGridSettings.DEFAULT
 ) {
     val graphics = this
 
@@ -34,7 +30,16 @@ fun <Item> GraphicsContext.drawGrid(
         graphics.line(hp1.rounded(), hp2.rounded(), settings.majorLineColour, settings.majorLineThickness)
         graphics.line(vp1.rounded(), vp2.rounded(), settings.majorLineColour, settings.majorLineThickness)
     }
+}
 
+/** Draw a sudoku grid with no grid lines within [rectangle] by drawing the
+ *  items within the grid. [drawItem] accepts the item to draw, the rectangle to
+ *  draw it within, and the location of the item. */
+fun <Item> GraphicsContext.drawGrid(
+        grid: Grid<Item>,
+        rectangle: Rectangle,
+        drawItem: (Item, Rectangle, GridLocation) -> Unit
+) {
     for (row in 0 .. 8) {
         for (col in 0 .. 8) {
             val size = rectangle.size / 9f
@@ -44,6 +49,72 @@ fun <Item> GraphicsContext.drawGrid(
         }
     }
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+fun GraphicsContext.drawGridOffsetLines(
+        rectangle: Rectangle,
+        settings: DrawGridOffsetSettings = DrawGridOffsetSettings.DEFAULT
+) {
+    val graphics = this
+    val maxHDistance = Grid.COLUMNS - 1f
+    val maxVDistance = Grid.ROWS - 1f
+    val maxDistance = Grid.COLUMNS + Grid.ROWS - 2f
+    val unitSize = rectangle.size / Size(maxHDistance * 2 + 1, maxVDistance * 2 + 1)
+    val centreRect = rectangle.resize(unitSize)
+    val centre = rectangle.centre
+
+    // assumes columns = rows
+    for (i in 0 until Grid.COLUMNS) {
+        val closeColour = Colour.mix(i / maxDistance, settings.primaryColour, settings.fadeColour)
+        val farColour = Colour.mix((i + maxVDistance) / maxDistance, settings.primaryColour, settings.fadeColour)
+
+        for ((origin, dp, ds) in listOf(
+                centreRect.topLeft to -unitSize.horizontal to unitSize.vertical * -maxVDistance,
+                centreRect.topRight to unitSize.horizontal to unitSize.vertical * -maxVDistance,
+                centreRect.bottomLeft to -unitSize.horizontal to unitSize.vertical * maxVDistance,
+                centreRect.bottomRight to unitSize.horizontal to unitSize.vertical * maxVDistance,
+                centreRect.topLeft to -unitSize.vertical to unitSize.horizontal * -maxVDistance,
+                centreRect.topRight to -unitSize.vertical to unitSize.horizontal * maxVDistance,
+                centreRect.bottomLeft to unitSize.vertical to unitSize.horizontal * -maxVDistance,
+                centreRect.bottomRight to unitSize.vertical to unitSize.horizontal * maxVDistance
+        )) {
+            val p0 = origin + dp * i.toFloat()
+            graphics.line(p0, p0 + ds, closeColour, settings.thickness, farColour)
+        }
+
+        for ((dp, ds) in listOf(
+                -unitSize.vertical to unitSize.horizontal / 2f,
+                unitSize.vertical to unitSize.horizontal / 2f,
+                -unitSize.horizontal to unitSize.vertical / 2f,
+                unitSize.horizontal to unitSize.vertical / 2f
+        )) {
+            val p0 = centre + dp * (i + 0.5f)
+            graphics.line(p0 + ds, p0 - ds, closeColour, settings.thickness)
+        }
+    }
+}
+
+fun GraphicsContext.drawGridOffsets(
+        rectangle: Rectangle,
+        drawOffset: (GridOffset, Rectangle) -> Unit
+) {
+    val maxHDistance = Grid.COLUMNS - 1f
+    val maxVDistance = Grid.ROWS - 1f
+    val unitSize = rectangle.size / Size(maxHDistance * 2 + 1, maxVDistance * 2 + 1)
+    val centreRect = rectangle.resize(unitSize)
+    val x = Grid.COLUMNS - 1
+    val y = Grid.ROWS - 1
+
+    for (dy in -y .. y) {
+        for (dx in -x .. x) {
+            val rect = centreRect.translateBy(unitSize.width * dx, -unitSize.height * dy)
+            drawOffset(GridOffset(dx, dy), rect)
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
 
 data class DrawGridSettings(
         val minorLineColour: Colour = Colour.lighterGrey,
@@ -55,3 +126,17 @@ data class DrawGridSettings(
         val DEFAULT = DrawGridSettings()
     }
 }
+
+data class DrawGridOffsetSettings(
+        val primaryColour: Colour = Colour.grey,
+        val fadeColour: Colour = Colour.white,
+        val thickness: Float = 2f
+) {
+    companion object {
+        val DEFAULT = DrawGridOffsetSettings()
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+private infix fun <A, B, C> Pair<A, B>.to(third: C) = Triple(first, second, third)

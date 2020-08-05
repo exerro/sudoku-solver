@@ -1,9 +1,12 @@
 import com.exerro.glfw.Window
+import com.exerro.glfw.data.Key
+import com.exerro.glfw.data.KeyModifier
+import com.exerro.glfw.data.MouseModifier
 import com.exerro.glfw.gl.GLContext
 import framework.*
 import framework.internal.QueuedGraphicsContext
-import sudoku.Grid
-import sudoku.drawGrid
+import sudoku.*
+import kotlin.math.abs
 
 class Application internal constructor(
         window: Window.Default,
@@ -12,40 +15,39 @@ class Application internal constructor(
 ): BaseApplication(window, glc, graphics) {
     //////////////////////////////////////////////////////////////////////////////////////
     val grid = Grid.load(GRID1)
+    var drawGrid = true
 
     override fun redraw() {
         val rect = Rectangle(Position.origin, windowSize)
                 .minSquare()
                 .resizeBy(0.9f)
 
-        // clear the screen to be white, then draw the grid
+        graphics.begin()
         graphics.clear(Colour.white)
-        graphics.drawGrid(grid, rect) { item, area, location ->
-            // write non-blank items' values in the area given
-            if (item != null) graphics.write(
-                    item.toString(),
-                    area.resizeVerticalBy(0.8f).translateVerticalBy(0.05f),
-                    Colour.darkGrey
-            )
-            graphics.write(
-                    "b${location.box}",
-                    area.resizeVerticalBy(0.2f, 1f).resizeHorizontalBy(0.9f),
-                    Colour.lightGrey,
-                    Alignment.Left
-            )
-            graphics.write(
-                    "i${location.indexInBox}",
-                    area.resizeVerticalBy(0.2f, 1f).resizeHorizontalBy(0.9f),
-                    Colour.lightGrey,
-                    Alignment.Right
-            )
+
+        if (drawGrid) {
+            graphics.drawGridlines(rect)
+            graphics.drawGrid(grid, rect) { item, area, _ ->
+                // write non-blank items' values in the area given
+                if (item != null) graphics.write(
+                        item.toString(),
+                        area.resizeVerticalBy(0.8f).translateVerticalRelative(0.05f),
+                        Colour.darkGrey
+                )
+            }
+        }
+        else {
+            graphics.drawGridOffsets(rect) { offset, area -> when {
+                offset == GridOffset.NONE -> graphics.rectangle(area, Colour.cyan)
+                offset.right * offset.up == 0 -> graphics.rectangle(area, Colour.yellow)
+                offset.right * offset.up == 1 -> graphics.rectangle(area, Colour.orange)
+                offset.right * offset.up == -1 -> graphics.rectangle(area, Colour.orange)
+                abs(offset.right) + abs(offset.up) == 3 -> graphics.rectangle(area, Colour.red)
+            } }
+            graphics.drawGridOffsetLines(rect)
         }
 
-        // draw greyscale colours (shades of grey)
-        Rectangle(Position.origin, Size(100f, windowSize.height))
-                .splitVertical(Colours.greyscale.size - 1)
-                .zip(Colours.greyscale - Colour.white)
-                .forEach { (rect, colour) -> graphics.rectangle(rect, colour) }
+        graphics.finish()
     }
 
     override fun initialise() {
@@ -53,6 +55,15 @@ class Application internal constructor(
     }
 
     override fun update() {
+
+    }
+
+    override fun mousePressed(position: Position, leftClick: Boolean, modifiers: Set<MouseModifier>) {
+        drawGrid = !drawGrid
+        redraw()
+    }
+
+    override fun keyPressed(key: Key, modifiers: Set<KeyModifier>) {
 
     }
 
