@@ -64,6 +64,9 @@ fun Rectangle.resizeVerticalBy(scale: Float, alignment: Float = 0.5f) =
 fun Rectangle.translate(dx: Float, dy: Float) = Rectangle(position + Size(dx, dy), size)
 fun Rectangle.translateHorizontal(dx: Float) = translate(dx, 0f)
 fun Rectangle.translateVertical(dy: Float) = translate(0f, dy)
+fun Rectangle.translateBy(sx: Float, sy: Float) = Rectangle(position + size * Size(sx, sy), size)
+fun Rectangle.translateHorizontalBy(sx: Float) = translateBy(sx, 0f)
+fun Rectangle.translateVerticalBy(sy: Float) = translateBy(0f, sy)
 
 fun Rectangle.splitVertical(ratio: Float = 0.5f): Pair<Rectangle, Rectangle> =
         Rectangle(position, Size(size.width, size.height * ratio)) to

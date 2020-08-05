@@ -10,7 +10,7 @@ class Application(
         graphics: QueuedGraphicsContext
 ): BaseApplication(window, glc, graphics) {
     //////////////////////////////////////////////////////////////////////////////////////
-    val grid = Grid.EMPTY.mapLocations { it }
+    val grid = Grid.load(GRID1)
 
     override fun redraw() {
         val rect = Rectangle(Position.origin, windowSize)
@@ -29,15 +29,12 @@ class Application(
 
         graphics.clear(Colour.white)
         graphics.drawGrid(grid, rect) { item, area ->
-            if (item.abs % 7 != 2 && item.abs % 6 != 0) {
-                val textArea = area.resizeVertical(area.size.height * 0.4f)
-                graphics.write("${item.row},${item.col}", textArea, Colour.blue)
-            }
-            else {
-                val textArea = area
-                        .resizeVertical(area.size.height * 0.8f)
-                        .translateVertical(area.size.height * 0.05f)
-                graphics.write(item.abs.toString().takeLast(1), textArea, Colour.grey)
+            if (item != null) {
+                graphics.write(
+                        item.toString(),
+                        area.resizeVerticalBy(0.8f).translateVerticalBy(0.05f),
+                        Colour.darkGrey
+                )
             }
         }
 
@@ -59,3 +56,15 @@ class Application(
 }
 
 private fun Float.pretty() = (this * 100).toInt() / 100f
+
+const val GRID1 = """
+0 4 0 0 0 0 1 7 9 
+0 0 2 0 0 8 0 5 4 
+0 0 6 0 0 5 0 0 8 
+0 8 0 0 7 0 9 1 0 
+0 5 0 0 9 0 0 3 0 
+0 1 9 0 6 0 0 4 0 
+3 0 0 4 0 0 7 0 0 
+5 7 0 1 0 0 2 0 0 
+9 2 8 0 0 0 0 6 0
+"""

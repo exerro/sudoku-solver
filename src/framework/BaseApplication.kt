@@ -4,6 +4,7 @@ import Application
 import com.exerro.glfw.*
 import com.exerro.glfw.WindowProperty.*
 import com.exerro.glfw.data.WindowPosition
+import com.exerro.glfw.data.WindowSize
 import com.exerro.glfw.gl.GLContext
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFW.GLFW_SAMPLES
@@ -61,6 +62,7 @@ abstract class BaseApplication(
 
             val (window, glc) = WindowSettings.default
                     .set(TITLE, "Sudoku Solver")
+                    .set(SIZE, WindowSize(1720, 960))
                     .set(VISIBLE, false)
                     .set(FOCUSED, true)
                     .createWindowWithGL()
@@ -160,25 +162,16 @@ abstract class BaseApplication(
                 application.internalGraphics.write("Ben is awesome", benArea, Colour.cyan.copy(alpha = alpha))
                 application.internalGraphics.write("Ben's Sudoku Engine", descArea, Colour.lightGrey.copy(alpha = alpha))
                 application.internalGraphics.finish()
-            }
-
-            (0 .. 100).forEach {
-                draw(it / 100f)
-                Thread.sleep(2)
-                instance.pollEvents()
-            }
-            (0 .. 100).forEach {
-                draw(1f)
-                Thread.sleep(20)
-                instance.pollEvents()
-            }
-            (0 .. 100).forEach {
-                draw(1 - it / 100f)
                 Thread.sleep(5)
                 instance.pollEvents()
             }
-            application.internalGraphics.clear(Colour.white)
-            Thread.sleep(500)
+
+//            repeat(100) { draw(it / 100f) }
+//            repeat(100) { draw(1f) }
+//            repeat(100) { draw(1 - it / 100f) }
+//            application.internalGraphics.clear(Colour.white)
+//            Thread.sleep(500)
+
             application.redraw()
 
             var needsToUpdate = true

@@ -99,7 +99,7 @@ class QueuedGraphicsContext(
             var currentX = command.rectangle.position.x +
                     (command.rectangle.size.width - width) * command.alignment.numeric
             val baselineY = command.rectangle.position.y + font.baseline * scale
-            val minT = max(0.04f, -0.34f / (1 + 234f * exp(-0.335f * scale)) + 17.079f * (1 - 1 / (7.84f + scale)) - 16.15f)
+            val minT = max(0.05f, -0.34f / (1 + 234f * exp(-0.335f * scale)) + 17.079f * (1 - 1 / (7.84f + scale)) - 16.15f)
 //            val minT = max(0.04f, -0.34f / (1 + 234f * exp(-0.335f * scale)) + 17.079f * (1 - 1 / (7.84f + scale)) - 16.1f)
             val maxT = 2.9f / (7.78f + scale) + 0.567f
 

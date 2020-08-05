@@ -37,5 +37,35 @@ class Grid<Item> private constructor(private val items: List<Item>) {
 
         /** An empty grid. */
         val EMPTY = Grid(Array(WIDTH * HEIGHT) { Unit }.toList())
+
+        /** Load a grid from a serialized format. */
+        fun load(gridContent: String, format: GridFormat): Grid<Int?> {
+            val lines = gridContent.trim().split("\n").map { it.trim() }
+
+            return EMPTY.mapLocations { location ->
+                val line = lines.getOrNull(location.row) ?: ""
+                val lineIndex = when (format) {
+                    GridFormat.SPACED_WITH_ZEROES -> location.col * 2
+                    GridFormat.ZEROES, GridFormat.DOTS -> location.col
+                }
+
+                when (val lineChar = line.getOrNull(lineIndex)) {
+                    null -> null
+                    in '1' .. '9' -> (lineChar - '0')
+                    else -> null
+                }
+            }
+        }
+
+        /** Load a grid from a serialized format, approximating the format. */
+        fun load(gridContent: String): Grid<Int?> {
+            val format = when {
+                gridContent.contains(' ') -> GridFormat.SPACED_WITH_ZEROES
+                gridContent.contains('0') -> GridFormat.ZEROES
+                gridContent.contains('.') -> GridFormat.DOTS
+                else -> GridFormat.ZEROES
+            }
+            return load(gridContent, format)
+        }
     }
 }
