@@ -1,6 +1,6 @@
 package sudoku
 
-/** A grid of [WIDTH] * [HEIGHT] generic items. */
+/** A grid of [COLUMNS] * [ROWS] generic items. */
 class Grid<Item> private constructor(private val items: List<Item>) {
     /** Map the values of the grid to new values using the current value and
      *  location. */
@@ -17,7 +17,7 @@ class Grid<Item> private constructor(private val items: List<Item>) {
     /** Get the item at the given [location] in the grid. */
     operator fun get(location: GridLocation): Item {
         val index = location.abs
-        if (index < 0 || index >= WIDTH * HEIGHT) error("Invalid grid location (out of bounds)")
+        if (index < 0 || index >= COLUMNS * ROWS) error("Invalid grid location (out of bounds)")
         return items[index]
     }
 
@@ -27,16 +27,24 @@ class Grid<Item> private constructor(private val items: List<Item>) {
 
     companion object {
         /** Width of a grid. */
-        const val WIDTH = 9
+        const val COLUMNS = 9
         /** Height of a grid. */
-        const val HEIGHT = 9
+        const val ROWS = 9
+        /** Number of rows in a box. */
+        const val BOX_ROWS = 3
+        /** Number of columns in a box. */
+        const val BOX_COLUMNS = 3
+        /** Number of cells in a box. */
+        const val BOX_SIZE = BOX_ROWS * BOX_COLUMNS
+        /** Number of boxes vertically in a grid. */
+        const val VBOXES = ROWS / BOX_ROWS
+        /** Number of boxes horizontally in a grid. */
+        const val HBOXES = COLUMNS / BOX_COLUMNS
         /** Number of boxes in a grid. */
-        const val BOXES = 9
-        /** Number of cells per box in a grid. */
-        const val BOX_SIZE = 9
+        const val BOXES = VBOXES * HBOXES
 
         /** An empty grid. */
-        val EMPTY = Grid(Array(WIDTH * HEIGHT) { Unit }.toList())
+        val EMPTY = Grid(Array(COLUMNS * ROWS) { Unit }.toList())
 
         /** Load a grid from a serialized format. */
         fun load(gridContent: String, format: GridFormat): Grid<Int?> {

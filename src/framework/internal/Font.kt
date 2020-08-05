@@ -1,15 +1,14 @@
-package framework
+package framework.internal
 
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL46C
 import org.lwjgl.stb.STBImage
-import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Paths
 
 private typealias FloatPair = Pair<Float, Float>
 
-class Font(fontData: FontData) {
+internal class Font(fontData: FontData) {
     val textureID: Int
     /** Top-left UV map. */
     val originUVs: Map<Char, FloatPair>
@@ -39,21 +38,13 @@ class Font(fontData: FontData) {
         val width = w.get()
         val height = h.get()
 
-        checkError()
         textureID = GL46C.glGenTextures()
-        checkError()
         GL46C.glBindTexture(GL46C.GL_TEXTURE_2D, textureID)
-        checkError()
         GL46C.glTexParameteri(GL46C.GL_TEXTURE_2D, GL46C.GL_TEXTURE_MIN_FILTER, GL46C.GL_LINEAR)
-        checkError()
         GL46C.glTexParameteri(GL46C.GL_TEXTURE_2D, GL46C.GL_TEXTURE_MAG_FILTER, GL46C.GL_LINEAR)
-        checkError()
         GL46C.glTexImage2D(GL46C.GL_TEXTURE_2D, 0, GL46C.GL_RGBA, width, height, 0, GL46C.GL_RGBA, GL46C.GL_UNSIGNED_BYTE, data)
-        checkError()
         GL46C.glBindTexture(GL46C.GL_TEXTURE_2D, 0)
         // TODO: wrapping?
-
-        checkError()
 
         STBImage.stbi_image_free(data)
 
@@ -83,17 +74,12 @@ class Font(fontData: FontData) {
         advances = _advances
     }
 
-    fun widthOf(text: String, scale: Float): Float {
+    /** Return the normalised width of the text at a height of 1px. Text width
+     *  will scale linearly with text height. */
+    fun widthOf(text: String): Float {
         if (text.isEmpty()) return 0f
         val advances = text.dropLast(1).map { advances[it] ?: 0f }.sum()
         val last = (quadDelta[text.last()]?.first ?: 0f) + (quadSize[text.last()]?.first ?: 0f)
-        return (advances + last) * scale
-    }
-}
-
-private fun checkError() {
-    val err = GL46C.glGetError()
-    if (err != GL46C.GL_NO_ERROR) {
-        error("GL error: $err")
+        return advances + last
     }
 }

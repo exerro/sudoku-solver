@@ -6,6 +6,7 @@ import com.exerro.glfw.WindowProperty.*
 import com.exerro.glfw.data.WindowPosition
 import com.exerro.glfw.data.WindowSize
 import com.exerro.glfw.gl.GLContext
+import framework.internal.QueuedGraphicsContext
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFW.GLFW_SAMPLES
 import org.lwjgl.glfw.GLFW.glfwWindowHint
@@ -15,7 +16,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.BlockingQueue
 import kotlin.concurrent.thread
 
-abstract class BaseApplication(
+abstract class BaseApplication internal constructor(
         val window: Window.Default,
         private val glc: GLContext,
         private val internalGraphics: QueuedGraphicsContext
@@ -38,6 +39,7 @@ abstract class BaseApplication(
      *  for all drawing operations. */
     val graphics: GraphicsContext = internalGraphics
 
+    /** Size of the window in pixels. This may change if the window is resized. */
     val windowSize: Size get() = window[FRAMEBUFFER_SIZE].let { (w, h) -> Size(w.toFloat(), h.toFloat()) }
 
     /** Run a named function. */
@@ -57,7 +59,7 @@ abstract class BaseApplication(
         const val WORKER_TIMEOUT = 1000L
 
         /** Create a centred window and an OpenGL context. */
-        fun createWindowAndContext(): Pair<Window.Default, GLContext> {
+        internal fun createWindowAndContext(): Pair<Window.Default, GLContext> {
             glfwWindowHint(GLFW_SAMPLES, 4)
 
             val (window, glc) = WindowSettings.default
@@ -81,7 +83,7 @@ abstract class BaseApplication(
         }
 
         /** Create a graphics context for the window given. */
-        fun createGraphics(window: Window): QueuedGraphicsContext {
+        internal fun createGraphics(window: Window): QueuedGraphicsContext {
             GLFW.glfwMakeContextCurrent(window.glfwID)
             GL.createCapabilities()
 
@@ -91,7 +93,7 @@ abstract class BaseApplication(
         }
 
         /** Start background threads for various tasks of the application. */
-        fun startBackgroundThreads(application: BaseApplication) {
+        internal fun startBackgroundThreads(application: BaseApplication) {
             // THREAD: work
             // start a background worker thread, taking work items from [workQueue]
             // and running them in-order
@@ -141,7 +143,7 @@ abstract class BaseApplication(
         }
 
         /** Set window callbacks mapping to the application's callbacks. */
-        fun setApplicationCallbacks(application: BaseApplication) {
+        internal fun setApplicationCallbacks(application: BaseApplication) {
             application.window.setHandler(DAMAGED) {
                 application.internalGraphics.makeDirty()
                 application.redraw()
@@ -149,7 +151,7 @@ abstract class BaseApplication(
         }
 
         /** Run the application's main loop. */
-        fun mainLoop(instance: GLFWInstance, application: BaseApplication) {
+        internal fun mainLoop(instance: GLFWInstance, application: BaseApplication) {
             application.window[VISIBLE] = true
 
             val (benArea, descArea) = Rectangle(Position.origin, application.windowSize)
@@ -159,8 +161,8 @@ abstract class BaseApplication(
             fun draw(alpha: Float) {
                 application.internalGraphics.begin()
                 application.internalGraphics.clear(Colour.white)
-                application.internalGraphics.write("Ben is awesome", benArea, Colour.cyan.copy(alpha = alpha))
-                application.internalGraphics.write("Ben's Sudoku Engine", descArea, Colour.lightGrey.copy(alpha = alpha))
+                application.internalGraphics.write("Ben is awesome", benArea, Colour.cyan.withAlpha(alpha))
+                application.internalGraphics.write("Ben's Sudoku Engine", descArea, Colour.lightGrey.withAlpha(alpha))
                 application.internalGraphics.finish()
                 Thread.sleep(5)
                 instance.pollEvents()

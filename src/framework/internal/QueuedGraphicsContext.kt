@@ -1,21 +1,16 @@
-package framework
+package framework.internal
 
 import com.exerro.glfw.Window
 import com.exerro.glfw.WindowProperty
-import com.exerro.glfw.data.MouseButton
 import com.exerro.glfw.data.WindowSize
 import com.exerro.glfw.get
+import framework.*
 import org.lwjgl.opengl.GL46C.*
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.exp
 import kotlin.math.max
 
-// TODO!!!
-//  mad flicker caused by the change system and double buffering
-//  draw XYZ, flip buffer, then draw W and flip buffer again and only W is
-//  visible
-
-class QueuedGraphicsContext(
+internal class QueuedGraphicsContext(
         private val window: Window
 ): GraphicsContext {
     override fun begin() {
@@ -95,12 +90,11 @@ class QueuedGraphicsContext(
         }
         is Command.Write -> {
             val scale = command.rectangle.size.height
-            val width = font.widthOf(command.text, scale)
+            val width = font.widthOf(command.text) * scale
             var currentX = command.rectangle.position.x +
                     (command.rectangle.size.width - width) * command.alignment.numeric
             val baselineY = command.rectangle.position.y + font.baseline * scale
             val minT = max(0.05f, -0.34f / (1 + 234f * exp(-0.335f * scale)) + 17.079f * (1 - 1 / (7.84f + scale)) - 16.15f)
-//            val minT = max(0.04f, -0.34f / (1 + 234f * exp(-0.335f * scale)) + 17.079f * (1 - 1 / (7.84f + scale)) - 16.1f)
             val maxT = 2.9f / (7.78f + scale) + 0.567f
 
             glUseProgram(textShader)
@@ -204,7 +198,7 @@ class QueuedGraphicsContext(
 
         glEnable(GL_BLEND)
         glEnable(GL_MULTISAMPLE)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     }
 
     private fun loadShaders(fragment: String, vertex: String): Int {

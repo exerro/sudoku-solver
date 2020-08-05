@@ -1,10 +1,11 @@
 import com.exerro.glfw.Window
 import com.exerro.glfw.gl.GLContext
 import framework.*
+import framework.internal.QueuedGraphicsContext
 import sudoku.Grid
 import sudoku.drawGrid
 
-class Application(
+class Application internal constructor(
         window: Window.Default,
         glc: GLContext,
         graphics: QueuedGraphicsContext
@@ -17,30 +18,33 @@ class Application(
                 .minSquare()
                 .resizeBy(0.9f)
 
-        val colours = listOf(
-                Colour.black,
-                Colour.charcoal,
-                Colour.darkGrey,
-                Colour.grey,
-                Colour.lighterGrey,
-                Colour.lightGrey,
-                Colour.ultraLightGrey
-        )
-
+        // clear the screen to be white, then draw the grid
         graphics.clear(Colour.white)
-        graphics.drawGrid(grid, rect) { item, area ->
-            if (item != null) {
-                graphics.write(
-                        item.toString(),
-                        area.resizeVerticalBy(0.8f).translateVerticalBy(0.05f),
-                        Colour.darkGrey
-                )
-            }
+        graphics.drawGrid(grid, rect) { item, area, location ->
+            // write non-blank items' values in the area given
+            if (item != null) graphics.write(
+                    item.toString(),
+                    area.resizeVerticalBy(0.8f).translateVerticalBy(0.05f),
+                    Colour.darkGrey
+            )
+            graphics.write(
+                    "b${location.box}",
+                    area.resizeVerticalBy(0.2f, 1f).resizeHorizontalBy(0.9f),
+                    Colour.lightGrey,
+                    Alignment.Left
+            )
+            graphics.write(
+                    "i${location.indexInBox}",
+                    area.resizeVerticalBy(0.2f, 1f).resizeHorizontalBy(0.9f),
+                    Colour.lightGrey,
+                    Alignment.Right
+            )
         }
 
+        // draw greyscale colours (shades of grey)
         Rectangle(Position.origin, Size(100f, windowSize.height))
-                .splitVertical(colours.size)
-                .zip(colours)
+                .splitVertical(Colours.greyscale.size - 1)
+                .zip(Colours.greyscale - Colour.white)
                 .forEach { (rect, colour) -> graphics.rectangle(rect, colour) }
     }
 
