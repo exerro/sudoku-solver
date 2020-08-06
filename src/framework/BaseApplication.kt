@@ -14,51 +14,77 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.BlockingQueue
 import kotlin.concurrent.thread
 
+// TODO: add monitor check for not calling processEvents()
+
 abstract class BaseApplication internal constructor(
-        /** TODO */
+        /** The window in which the application is drawing stuff. */
         val window: Window.Default,
         /** Graphics context which is handled by the application internally. Used
          *  for all drawing operations. */
-        val graphics: GraphicsContext
+        val graphics: GraphicsContext,
+        private val instance: GLFWInstance
 ) {
-    /** Called once before the application starts. */
-    open fun initialise() {}
+    /** Called once before the application starts and before the window is
+     *  created. */
+    open fun setup() {}
 
-    /** Called whenever application should redraw its entire contents, for
-     *  example due to the window resizing or being damaged. Also called once
-     *  after initialisation. */
-    open fun redraw() {}
+    /** Called when the application is ready to start. */
+    open fun start() {
+        draw()
+        while (running) processEvents()
+    }
 
-    /** Called repeatedly while the application is running. Note, the intervals
-     *  between calls may vary. */
-    open fun update() {}
+    /** Responsible for drawing the entire contents of the screen. Is called
+     *  automatically whenever application should redraw its entire contents,
+     *  for example due to the window being resized or damaged. Can also be
+     *  called from your own code whenever. */
+    open fun draw() {}
 
-    /** Called once when the mouse is pressed. */
+    /** Called when the mouse is pressed. */
     open fun mousePressed(position: Position, leftClick: Boolean, modifiers: Set<MouseModifier>) {}
 
-    /** Called once when a key is pressed. */
+    /** Called when a key is pressed. */
     open fun keyPressed(key: Key, modifiers: Set<KeyModifier>) {}
+
+    /** Whether to spawn a thread that looks out for potential issues. */
+    open val spawnMonitor: Boolean = true
 
     ////////////////////////////////////////////////////////////////////////////
 
     /** Size of the window in pixels. This may change if the window is resized. */
     val windowSize: Size get() = window[FRAMEBUFFER_SIZE].let { (w, h) -> Size(w.toFloat(), h.toFloat()) }
 
-    /** Run a named function. */
-    fun submitWork(name: String, fn: () -> Unit) {
-        workQueue.put(name to fn)
+    /** Whether the application is running. */
+    var running: Boolean = true
+        private set
+
+    /** Run a named function in the background. */
+    fun background(name: String = "", fn: () -> Unit) {
+        taskQueue.put(name to fn)
+    }
+
+    /** Stop the application from running. */
+    fun stop() {
+        running = false
+    }
+
+    /** Process events. Must be called for the [mousePressed] and [keyPressed]
+     *  callbacks to work, and should be called regularly. If a task will take
+     *  a long time to run, consider running it in the [background]. */
+    fun processEvents() {
+        instance.pollEvents()
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
 
-    private val workQueue: BlockingQueue<Pair<String, () -> Unit>> = ArrayBlockingQueue(1024)
-    private var currentWork: String? = null
-    private var workStartTime: Long = 0L
+    private val taskQueue: BlockingQueue<Pair<String, () -> Unit>> = ArrayBlockingQueue(1024)
+    private var currentTask: String? = null
+    private var taskStartTime: Long = 0L
 
     companion object {
         const val REFRESH_RATE = 60
         const val UPDATE_DELAY = 1000L / REFRESH_RATE
-        const val WORK_TIMEOUT = 1000L
+        const val TASK_TIMEOUT = 1000L
 
         /** Create a centred window and an OpenGL context. */
         private fun createWindowAndContext(): Pair<Window.Default, GLContext> {
@@ -94,38 +120,38 @@ abstract class BaseApplication internal constructor(
             }
         }
 
-        /** Start a background worker thread, taking work items from [workQueue]
-         *  and running them in-order. */
-        private fun startApplicationWorkThread(
+        /** Start a background task thread, taking tasks from [taskQueue] and
+         *  running them in-order. */
+        private fun startApplicationTaskThread(
                 application: BaseApplication
         ) {
             thread(start = true, isDaemon = true) {
                 while (application.window.valid) {
-                    val (name, fn) = application.workQueue.take()
-                    application.workStartTime = System.currentTimeMillis()
-                    application.currentWork = name
+                    val (name, fn) = application.taskQueue.take()
+                    application.taskStartTime = System.currentTimeMillis()
+                    application.currentTask = name
                     fn()
-                    application.currentWork = null
+                    application.currentTask = null
                 }
             }
         }
 
-        /** Start a thread watching for worker tasks taking more than
-         *  [WORK_TIMEOUT] to run; if one is found, print a warning message. */
-        private fun startApplicationWorkMonitorThread(
+        /** Start a thread watching for tasks taking more than [TASK_TIMEOUT] to
+         *  run; if one is found, print a warning message. */
+        private fun startApplicationMonitorThread(
                 application: BaseApplication
         ) {
             thread(start = true, isDaemon = true) {
-                while (application.window.valid) when (val work = application.currentWork) {
-                    null -> Thread.sleep(WORK_TIMEOUT)
+                while (application.window.valid) when (val work = application.currentTask) {
+                    null -> Thread.sleep(TASK_TIMEOUT)
                     else -> {
                         val currentTime = System.currentTimeMillis()
-                        if (currentTime - application.workStartTime > WORK_TIMEOUT) {
+                        if (currentTime - application.taskStartTime > TASK_TIMEOUT) {
                             println("\u001b[33mWarning: '$work' has been running for over 1 second!\u001b[0m")
-                            application.currentWork = null
+                            application.currentTask = null
                         }
                         else {
-                            Thread.sleep(application.workStartTime + WORK_TIMEOUT - currentTime)
+                            Thread.sleep(application.taskStartTime + TASK_TIMEOUT - currentTime)
                         }
                     }
                 }
@@ -160,7 +186,7 @@ abstract class BaseApplication internal constructor(
         ) {
             application.window.setHandler(DAMAGED) {
                 graphics.makeDirty()
-                application.redraw()
+                application.draw()
             }
 
             application.window.setHandler(KEY_CALLBACK) { key, pressed, modifiers, _ ->
@@ -171,6 +197,10 @@ abstract class BaseApplication internal constructor(
                 val cursorPosition = application.window[CURSOR_POSITION]
                 val position = Position(cursorPosition.x.toFloat(), cursorPosition.y.toFloat())
                 if (pressed) application.mousePressed(position, button == MouseButton.LEFT, modifiers)
+            }
+
+            application.window.setHandler(SHOULD_CLOSE) {
+                application.running = false
             }
         }
 
@@ -201,42 +231,25 @@ abstract class BaseApplication internal constructor(
             Thread.sleep(500)
         }
 
-        /** Run the application's main loop. */
-        private fun mainLoop(instance: GLFWInstance, application: BaseApplication) {
-            var needsToUpdate = true
-
-            while (!application.window[SHOULD_CLOSE]) {
-                instance.pollEvents()
-
-                if (needsToUpdate) {
-                    needsToUpdate = false
-                    application.submitWork("Application.update()") {
-                        application.update()
-                        needsToUpdate = true
-                    }
-                }
-            }
-
-            application.window.destroy()
-            instance.terminate()
-        }
-
-        fun <T: BaseApplication> launch(fn: (Window.Default, GraphicsContext) -> T) {
+        fun <T: BaseApplication> launch(
+                fn: (Window.Default, GraphicsContext, GLFWInstance) -> T
+        ) {
             val instance = GLFWInstance.createInitialised()
             val (window, glc) = createWindowAndContext()
             val graphics = createGraphics(window)
-            val app = fn(window, graphics)
+            val app = fn(window, graphics, instance)
 
-            app.initialise()
+            app.setup()
 
-            startApplicationWorkThread(app)
-            startApplicationWorkMonitorThread(app)
+            startApplicationTaskThread(app)
+            if (app.spawnMonitor) startApplicationMonitorThread(app)
             startApplicationRenderThread(glc, app, graphics)
             setApplicationCallbacks(app, graphics)
             app.window[VISIBLE] = true
-            drawStupidSplashScreen(instance, app, graphics)
-            app.redraw()
-            mainLoop(instance, app)
+            // drawStupidSplashScreen(instance, app, graphics)
+            app.start()
+            window.destroy()
+            instance.terminate()
         }
     }
 }

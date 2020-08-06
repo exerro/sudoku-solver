@@ -65,7 +65,8 @@ class Grid<Item> private constructor(private val items: List<Item>) {
             }
         }
 
-        /** Load a grid from a serialized format, approximating the format. */
+        /** Load a grid from a serialized format, determining the format based
+         *  on the content. */
         fun load(gridContent: String): Grid<Int?> {
             val format = when {
                 gridContent.contains(' ') -> GridFormat.SPACED_WITH_ZEROES

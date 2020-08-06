@@ -70,7 +70,8 @@ val Rectangle.bottomRight get() = position + size
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-/** Return a square that is sized equal to the minimum of the width and height. */
+/** Return the largest square that exists within this rectangle, aligning it
+ *  vertically or horizontally depending on the dimensions of this rectangle. */
 fun Rectangle.minSquare(alignX: Float = 0.5f, alignY: Float = 0.5f): Rectangle {
     val newSize = Size(min(size.width, size.height))
     return Rectangle(position + (size - newSize) * Size(alignX, alignY), newSize)
@@ -128,6 +129,7 @@ fun Rectangle.splitHorizontal(divisions: Int): List<Rectangle> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/** Return true if [position] lies within the rectangle, or false otherwise. */
 fun Rectangle.contains(position: Position) = when {
     position.x < this.position.x -> false
     position.y < this.position.y -> false
