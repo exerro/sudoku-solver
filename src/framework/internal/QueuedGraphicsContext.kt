@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.exp
 import kotlin.math.max
 
-internal class QueuedGraphicsContext(
+class QueuedGraphicsContext internal constructor(
         private val window: Window
 ): GraphicsContext {
     override fun begin() {
@@ -52,13 +52,13 @@ internal class QueuedGraphicsContext(
 
     fun renderAll() {
         lock.lock()
-        synchronized(queue) {
-            val fbSize = window[WindowProperty.FRAMEBUFFER_SIZE]
-            glViewport(0, 0, fbSize.width, fbSize.height)
-            queue.forEach { renderCommand(it, fbSize) }
-            rendered = queue.size
-        }
+        val toDraw = synchronized(queue) { queue.map { it } }
         lock.unlock()
+
+        val fbSize = window[WindowProperty.FRAMEBUFFER_SIZE]
+        glViewport(0, 0, fbSize.width, fbSize.height)
+        toDraw.forEach { renderCommand(it, fbSize) }
+        rendered = queue.size
     }
 
     //////////////////////////////////////////////////////////////////////////////////////

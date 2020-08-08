@@ -2,6 +2,7 @@ import com.exerro.glfw.GLFWInstance
 import com.exerro.glfw.Window
 import com.exerro.glfw.data.MouseModifier
 import framework.*
+import framework.internal.QueuedGraphicsContext
 import sudoku.*
 import kotlin.math.abs
 
@@ -10,10 +11,10 @@ This is an example application using the framework provided in this repository.
 Package 'framework' contains general code related to graphics and windowing,
 while package 'sudoku' contains utilities specific to sudoku.
 
-The rough approach is to create a subclass of BaseApplication and then call
-`BaseApplication.launch(::MyApplication)` which will handle all of the window
+The rough approach is to create a subclass of Application and then call
+`Application.launch(::MyApplication)` which will handle all of the window
 creation and graphics setup automagically.
-BaseApplication has callbacks which may be overridden, such as handling input
+Application has callbacks which may be overridden, such as handling input
 events, drawing, and starting. Any application should frequently call
 processEvents() and use the 'running' field to stop when necessary.
  */
@@ -46,7 +47,7 @@ fun main() {
 class ExampleApplication(
         // The constructor takes a window, a graphics context, and a GLFW
         // instance and simply passes those to the constructor of
-        // `BaseApplication`, which is the class that ExampleApplication extends.
+        // `Application`, which is the class that ExampleApplication extends.
         // `window` is a handle to the window being shown on the screen. It
         // can be used to do more advanced things like setting event callbacks,
         // setting size limits, querying whether keys are held etc, but
@@ -56,7 +57,7 @@ class ExampleApplication(
         // rectangles and writing text. Most graphics operations use rectangles
         // or positions to determine where they are being drawn. These are
         // defined in `framework/geometry.kt`.
-        graphics: GraphicsContext,
+        graphics: QueuedGraphicsContext,
         // This just has to be given for stuff to work. It represents an
         // initialised GLFW system from which you can poll events and create
         // windows etc.
@@ -64,7 +65,7 @@ class ExampleApplication(
 ): Application(window, graphics, instance) {
     // Everything further within this example application is optional and can be
     // removed while still handling the window creation and closing properly.
-    // `start()` has a default implementation in BaseApplication equal to the
+    // `start()` has a default implementation in Application equal to the
     // one here.
 
     // Load a grid from the string GRID1 (at the bottom) and store this in the
@@ -88,7 +89,7 @@ class ExampleApplication(
         draw()
     }
 
-    // Overrides the default 'redraw' function inherited from BaseApplication,
+    // Overrides the default 'redraw' function inherited from Application,
     // which is called for you automatically in response to certain events like
     // starting up or having the window resized.
     override fun draw() {
@@ -101,7 +102,8 @@ class ExampleApplication(
 
         if (drawGrid) {
             graphics.drawGridlines(sudokuArea)
-            graphics.drawGrid(grid, sudokuArea) { item, area, _ ->
+            graphics.drawGrid(sudokuArea) { area, location ->
+                val item = grid[location]
                 // write non-blank items' values in the area given
                 if (item != null) graphics.write(
                         item.toString(),

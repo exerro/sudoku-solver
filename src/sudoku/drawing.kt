@@ -33,19 +33,18 @@ fun GraphicsContext.drawGridlines(
 }
 
 /** Draw a sudoku grid with no grid lines within [rectangle] by drawing the
- *  items within the grid. [drawItem] accepts the item to draw, the rectangle to
- *  draw it within, and the location of the item. */
-fun <Item> GraphicsContext.drawGrid(
-        grid: Grid<Item>,
+ *  items within the grid. [drawItem] accepts the rectangle to draw within, and
+ *  the location of the item within the grid. */
+fun GraphicsContext.drawGrid(
         rectangle: Rectangle,
-        drawItem: (Item, Rectangle, GridLocation) -> Unit
+        drawItem: (area: Rectangle, location: GridLocation) -> Unit
 ) {
     for (row in 0 .. 8) {
         for (col in 0 .. 8) {
             val size = rectangle.size / 9f
             val offset = rectangle.position + size * Size(col.toFloat(), row.toFloat())
             val location = GridLocation.fromRowAndColumn(row, col)
-            drawItem(grid[location], Rectangle(offset, size), location)
+            drawItem(Rectangle(offset, size), location)
         }
     }
 }

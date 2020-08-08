@@ -91,6 +91,11 @@ fun Rectangle.resizeHorizontalBy(scale: Float, alignment: Float = 0.5f) =
         resizeHorizontal(size.width * scale, alignment)
 fun Rectangle.resizeVerticalBy(scale: Float, alignment: Float = 0.5f) =
         resizeVertical(size.height * scale, alignment)
+fun Rectangle.withPadding(top: Float = 0f, right: Float = 0f, bottom: Float = 0f, left: Float = 0f) =
+        Rectangle(position + Size(left, top), size - Size(left + right, top + bottom))
+fun Rectangle.withPadding(vertical: Float, horizontal: Float) =
+        withPadding(vertical, horizontal, vertical, horizontal)
+fun Rectangle.withPadding(padding: Float) = withPadding(padding, padding)
 
 ////////////////////////////////////////////////////////////////////////////////
 

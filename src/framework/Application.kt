@@ -9,6 +9,7 @@ import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFW.GLFW_SAMPLES
 import org.lwjgl.glfw.GLFW.glfwWindowHint
 import org.lwjgl.opengl.GL
+import org.lwjgl.opengl.GL46C
 import org.lwjgl.system.MemoryUtil
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.BlockingQueue
@@ -16,12 +17,9 @@ import kotlin.concurrent.thread
 
 // TODO: add monitor check for not calling processEvents()
 
-abstract class Application internal constructor(
-        /** The window in which the application is drawing stuff. */
+abstract class Application(
         val window: Window.Default,
-        /** Graphics context which is handled by the application internally. Used
-         *  for all drawing operations. */
-        val graphics: GraphicsContext,
+        private val internalGraphics: QueuedGraphicsContext,
         private val instance: GLFWInstance
 ) {
     /** Called once before the application starts and before the window is
@@ -57,6 +55,10 @@ abstract class Application internal constructor(
 
     ////////////////////////////////////////////////////////////////////////////
 
+    /** Graphics context which is handled by the application internally. Used
+     *  for all drawing operations. */
+    val graphics: GraphicsContext = internalGraphics
+
     /** Size of the window in pixels. This may change if the window is resized. */
     val windowSize: Size get() =
         window[FRAMEBUFFER_SIZE].let { (w, h) -> Size(w.toFloat(), h.toFloat()) }
@@ -79,11 +81,17 @@ abstract class Application internal constructor(
         running = false
     }
 
-    /** Process events. Must be called for the [mousePressed] and [keyPressed]
-     *  callbacks to work, and should be called regularly. If a task will take
-     *  a long time to run, consider running it in the [background]. */
+    /** Process events and draw changes to the screen. Must be called for the
+     *  [mousePressed] and [keyPressed] callbacks to work, and should be called
+     *  regularly. If a task will take a long time to run, consider running it
+     *  in the [background]. */
     fun processEvents() {
-        instance.pollEvents()
+        instance.waitEvents()
+
+        if (internalGraphics.isDirty()) {
+            internalGraphics.renderAll()
+            GLFW.glfwSwapBuffers(window.glfwID)
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -126,9 +134,7 @@ abstract class Application internal constructor(
             GLFW.glfwMakeContextCurrent(window.glfwID)
             GL.createCapabilities()
 
-            return QueuedGraphicsContext(window).also {
-                GLFW.glfwMakeContextCurrent(MemoryUtil.NULL)
-            }
+            return QueuedGraphicsContext(window)
         }
 
         /** Start a background task thread, taking tasks from [taskQueue] and
@@ -165,27 +171,6 @@ abstract class Application internal constructor(
                             Thread.sleep(application.taskStartTime + TASK_TIMEOUT - currentTime)
                         }
                     }
-                }
-            }
-        }
-
-        /** Start a thread to render changes to an application's graphics
-         *  context and present them to the screen. */
-        private fun startApplicationRenderThread(
-                glc: GLContext,
-                application: Application,
-                graphics: QueuedGraphicsContext
-        ) {
-            thread(start = true, isDaemon = true) {
-                GLFW.glfwMakeContextCurrent(application.window.glfwID)
-                GL.createCapabilities()
-
-                while (application.window.valid) {
-                    if (graphics.isDirty()) {
-                        graphics.renderAll()
-                        glc.swapBuffers()
-                    }
-                    else Thread.sleep(UPDATE_DELAY)
                 }
             }
         }
@@ -251,7 +236,7 @@ abstract class Application internal constructor(
         }
 
         fun <T: Application> launch(
-                fn: (Window.Default, GraphicsContext, GLFWInstance) -> T
+                fn: (Window.Default, QueuedGraphicsContext, GLFWInstance) -> T
         ) {
             val instance = GLFWInstance.createInitialised()
             val (window, glc) = createWindowAndContext()
@@ -262,7 +247,6 @@ abstract class Application internal constructor(
 
             startApplicationTaskThread(app)
             if (app.spawnMonitor) startApplicationMonitorThread(app)
-            startApplicationRenderThread(glc, app, graphics)
             setApplicationCallbacks(app, graphics)
             app.window[VISIBLE] = true
             // drawStupidSplashScreen(instance, app, graphics)
