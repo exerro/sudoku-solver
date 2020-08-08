@@ -11,14 +11,8 @@ class Colour private constructor(
         val blue: Float,
         val alpha: Float
 ) {
+    /** Return the same colour with a different alpha value. */
     fun withAlpha(alpha: Float) = Colour(red, green, blue, alpha)
-
-    override fun toString() = "Colour($red, $green, $blue, $alpha)"
-    override fun hashCode() = Objects.hash(red, green, blue, alpha)
-    override fun equals(other: Any?): Boolean {
-        val c = other as? Colour ?: return false
-        return red == c.red && green == c.green && blue == c.blue && alpha == c.alpha
-    }
 
     companion object {
         val red = rgb(0.8, 0.2, 0.2)
@@ -54,6 +48,10 @@ class Colour private constructor(
         /** Create a greyscale colour from its brightness and optional alpha component. */
         fun greyscale(value: Double, alpha: Double = 1.0) = rgba(value, value, value, alpha)
 
+        /** Interpolate between colours [a] and [b] doing gamma correction. When
+         *  [ratio] is 0, [a] will be returned. When [ratio] is 1, [b] will be
+         *  returned. [ratio] values between 0 and 1 will mix gradually from [a]
+         *  to [b]. */
         fun mix(ratio: Float, a: Colour, b: Colour): Colour {
             val red = sqrt(a.red * a.red * (1 - ratio) + b.red * b.red * ratio)
             val green = sqrt(a.green * a.green * (1 - ratio) + b.green * b.green * ratio)
@@ -61,6 +59,15 @@ class Colour private constructor(
             val alpha = a.alpha * (1 - ratio) + b.alpha * ratio
             return Colour(red, green, blue, alpha)
         }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    override fun toString() = "Colour($red, $green, $blue, $alpha)"
+    override fun hashCode() = Objects.hash(red, green, blue, alpha)
+    override fun equals(other: Any?): Boolean {
+        val c = other as? Colour ?: return false
+        return red == c.red && green == c.green && blue == c.blue && alpha == c.alpha
     }
 }
 

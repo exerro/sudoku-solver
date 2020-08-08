@@ -16,7 +16,7 @@ import kotlin.concurrent.thread
 
 // TODO: add monitor check for not calling processEvents()
 
-abstract class BaseApplication internal constructor(
+abstract class Application internal constructor(
         /** The window in which the application is drawing stuff. */
         val window: Window.Default,
         /** Graphics context which is handled by the application internally. Used
@@ -46,13 +46,24 @@ abstract class BaseApplication internal constructor(
     /** Called when a key is pressed. */
     open fun keyPressed(key: Key, modifiers: Set<KeyModifier>) {}
 
+    /** Called when the window is resized. */
+    open fun windowResized() {}
+
+    /** Called when one or more files are dragged onto the window. */
+    open fun pathsDropped(paths: List<String>) {}
+
     /** Whether to spawn a thread that looks out for potential issues. */
     open val spawnMonitor: Boolean = true
 
     ////////////////////////////////////////////////////////////////////////////
 
     /** Size of the window in pixels. This may change if the window is resized. */
-    val windowSize: Size get() = window[FRAMEBUFFER_SIZE].let { (w, h) -> Size(w.toFloat(), h.toFloat()) }
+    val windowSize: Size get() =
+        window[FRAMEBUFFER_SIZE].let { (w, h) -> Size(w.toFloat(), h.toFloat()) }
+
+    /** Position of the mouse cursor within the window. */
+    val cursorPosition: Position get() =
+        window[CURSOR_POSITION].let { (x, y) -> Position(x.toFloat(), y.toFloat()) }
 
     /** Whether the application is running. */
     var running: Boolean = true
@@ -123,7 +134,7 @@ abstract class BaseApplication internal constructor(
         /** Start a background task thread, taking tasks from [taskQueue] and
          *  running them in-order. */
         private fun startApplicationTaskThread(
-                application: BaseApplication
+                application: Application
         ) {
             thread(start = true, isDaemon = true) {
                 while (application.window.valid) {
@@ -139,7 +150,7 @@ abstract class BaseApplication internal constructor(
         /** Start a thread watching for tasks taking more than [TASK_TIMEOUT] to
          *  run; if one is found, print a warning message. */
         private fun startApplicationMonitorThread(
-                application: BaseApplication
+                application: Application
         ) {
             thread(start = true, isDaemon = true) {
                 while (application.window.valid) when (val work = application.currentTask) {
@@ -162,7 +173,7 @@ abstract class BaseApplication internal constructor(
          *  context and present them to the screen. */
         private fun startApplicationRenderThread(
                 glc: GLContext,
-                application: BaseApplication,
+                application: Application,
                 graphics: QueuedGraphicsContext
         ) {
             thread(start = true, isDaemon = true) {
@@ -181,12 +192,20 @@ abstract class BaseApplication internal constructor(
 
         /** Set window callbacks mapping to the application's callbacks. */
         private fun setApplicationCallbacks(
-                application: BaseApplication,
+                application: Application,
                 graphics: QueuedGraphicsContext
         ) {
             application.window.setHandler(DAMAGED) {
                 graphics.makeDirty()
                 application.draw()
+            }
+
+            application.window.setHandler(FRAMEBUFFER_SIZE) {
+                application.windowResized()
+            }
+
+            application.window.setHandler(PATH_DROP_CALLBACK) {
+                application.pathsDropped(it)
             }
 
             application.window.setHandler(KEY_CALLBACK) { key, pressed, modifiers, _ ->
@@ -207,7 +226,7 @@ abstract class BaseApplication internal constructor(
         /** Don't ask. */
         private fun drawStupidSplashScreen(
                 instance: GLFWInstance,
-                application: BaseApplication,
+                application: Application,
                 graphics: GraphicsContext
         ) {
             val (benArea, descArea) = Rectangle(Position.origin, application.windowSize)
@@ -231,7 +250,7 @@ abstract class BaseApplication internal constructor(
             Thread.sleep(500)
         }
 
-        fun <T: BaseApplication> launch(
+        fun <T: Application> launch(
                 fn: (Window.Default, GraphicsContext, GLFWInstance) -> T
         ) {
             val instance = GLFWInstance.createInitialised()

@@ -1,16 +1,18 @@
 package sudoku
 
-/** Abstraction of a location in a grid. Use [GridLocation.from*] or
- *  [GridLocation.checkedFrom*] to create a location. Numeric indexes are always
- *  left-to-right and/or top-to-bottom, in that order, depending on what the
- *  index represents. */
+typealias GridLocations = Set<GridLocation>
+
+/** Abstraction of a location in a grid. Use [GridLocation.*] to create a
+ *  location. */
 class GridLocation private constructor(private val index: Int) {
     /** 0-based row of the location. */
     val row: Int get() = index / Grid.COLUMNS
+
     /** 0-based column of the location. */
-    val col: Int get() = index % Grid.COLUMNS
-    /** 0-based box of the location. Boxes start at the top left and work right
-     *  first then downwards, i.e.
+    val column: Int get() = index % Grid.COLUMNS
+
+    /** 0-based box of the location. A box is a 3x3 region. Boxes start at the
+     *  top left and work right first then downwards, i.e.
      *
      *  0 1 2
      *
@@ -22,20 +24,18 @@ class GridLocation private constructor(private val index: Int) {
         val boxX = index % Grid.COLUMNS / Grid.HBOXES
         return boxY * Grid.HBOXES + boxX
     }
-    /** 0-based absolute index (0-80) of the location, top left then right and
-     *  downwards as with [box]. */
-    val abs: Int get() = index
 
-    /** 0-based index of the location within its row. */
-    val indexInRow: Int get() = index % Grid.COLUMNS
-    /** 0-based index of the location within its column. */
-    val indexInCol: Int get() = index / Grid.COLUMNS
-    /** 0-based index of the location within its box. */
-    val indexInBox: Int get() {
+    /** 0-based index of the location within its box, starting at the top left
+     *  and working right and downwards. */
+    val cellInBox: Int get() {
         val boxY = index / Grid.COLUMNS % Grid.BOX_ROWS
         val boxX = index % Grid.COLUMNS % Grid.BOX_COLUMNS
         return boxY * Grid.BOX_COLUMNS + boxX
     }
+
+    /** 0-based absolute index (0-80) of the location, top left then right and
+     *  downwards as with [box]. */
+    val absolute: Int get() = index
 
     /** Return a new location relative to this one, moved [right] and [up] by
      *  some amount. If the resultant location lies outside the grid, return
@@ -43,8 +43,8 @@ class GridLocation private constructor(private val index: Int) {
     fun relativeLocation(right: Int, up: Int): GridLocation? = when {
         row - up < 0 -> null
         row - up >= Grid.ROWS -> null
-        col + right < 0 -> null
-        col + right >= Grid.COLUMNS -> null
+        column + right < 0 -> null
+        column + right >= Grid.COLUMNS -> null
         else -> GridLocation(index - up * Grid.COLUMNS + right)
     }
 
@@ -65,49 +65,52 @@ class GridLocation private constructor(private val index: Int) {
     fun down() = relativeLocation(0, -1)
 
     companion object {
-        /** Create a [GridLocation] from a [column] and a [row]. */
+        /** Create a [GridLocation] from an [column] into the given [row]. */
         fun fromRowAndColumn(row: Int, column: Int) = GridLocation(row * Grid.COLUMNS + column)
 
-        /** Create a [GridLocation] from an [index] into the given [row]. */
-        fun fromIndexInRow(row: Int, index: Int) = GridLocation(row * Grid.COLUMNS + index)
-
-        /** Create a [GridLocation] from an [index] into the given [col]. */
-        fun fromIndexInCol(col: Int, index: Int) = GridLocation(index * Grid.COLUMNS + col)
-
-        /** Create a [GridLocation] from an [index] into the given [box]. */
-        fun fromIndexInBox(box: Int, index: Int): GridLocation {
+        /** Create a [GridLocation] from an [cell] into the given [box]. */
+        fun fromCellInBox(box: Int, cell: Int): GridLocation {
             val tlIndex = box / Grid.HBOXES * Grid.BOX_ROWS * Grid.COLUMNS +
                           box % Grid.HBOXES * Grid.BOX_COLUMNS
-            val boxOffset = index / Grid.BOX_COLUMNS * Grid.COLUMNS +
-                            index % Grid.BOX_COLUMNS
+            val boxOffset = cell / Grid.BOX_COLUMNS * Grid.COLUMNS +
+                            cell % Grid.BOX_COLUMNS
             return GridLocation(tlIndex + boxOffset)
         }
 
         /** Create a [GridLocation] from an absolute [index]. */
         fun fromAbsolute(index: Int) = GridLocation(index)
 
-        /** Create a [GridLocation] from a [column] and a [row]. */
+        /** Create a [GridLocation] from a [column] into the given [row]. Return
+         *  null if the [row] or [column] provided lies outside the grid. */
         fun checkedFromRowAndColumn(row: Int, column: Int) = fromRowAndColumn(row, column)
                 .takeIf { row >= 0 && row < Grid.ROWS && column >= 0 && column < Grid.COLUMNS }
 
-        /** Create a [GridLocation] from an [index] into the given [row]. Return
-         *  null if the [row] or [index] provided lies outside the grid. */
-        fun checkedFromIndexInRow(row: Int, index: Int) = fromIndexInRow(row, index)
-                .takeIf { row >= 0 && row < Grid.ROWS && index >= 0 && index < Grid.COLUMNS }
-
-        /** Create a [GridLocation] from an [index] into the given [col]. Return
-         *  null if the [col] or [index] provided lies outside the grid. */
-        fun checkedFromIndexInCol(col: Int, index: Int) = fromIndexInCol(col, index)
-                .takeIf { col >= 0 && col < Grid.COLUMNS && index >= 0 && index < Grid.ROWS }
-
-        /** Create a [GridLocation] from an [index] into the given [box]. Return
-         *  null if the [box] or [index] provided lies outside the grid. */
-        fun checkedFromIndexInBox(box: Int, index: Int) = fromIndexInBox(box, index)
-                .takeIf { box >= 0 && box < Grid.BOXES && index >= 0 && index < Grid.BOX_SIZE }
+        /** Create a [GridLocation] from an [cell] into the given [box]. Return
+         *  null if the [box] or [cell] provided lies outside the grid. */
+        fun checkedFromCellInBox(box: Int, cell: Int) = fromCellInBox(box, cell)
+                .takeIf { box >= 0 && box < Grid.BOXES && cell >= 0 && cell < Grid.BOX_SIZE }
 
         /** Create a [GridLocation] from an absolute [index]. Return null if the
          *  [index] provided lies outside the grid. */
         fun checkedFromAbsolute(index: Int) = GridLocation(index)
                 .takeIf { index >= 0 && index < Grid.COLUMNS * Grid.ROWS }
+
+        /** Return a set of all grid locations in [row]. */
+        fun row(row: Int): GridLocations =
+                (0 until Grid.COLUMNS).map { fromRowAndColumn(row, it) }.toSet()
+
+        /** Return a set of all grid locations in [column]. */
+        fun column(column: Int): GridLocations =
+                (0 until Grid.ROWS).map { fromRowAndColumn(it, column) }.toSet()
+
+        /** Return a set of all grid locations in [box]. */
+        fun box(box: Int): GridLocations =
+                (0 until Grid.BOX_SIZE).map { fromCellInBox(box, it) }.toSet()
     }
+
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    override fun equals(other: Any?) = (other as? GridLocation)?.index == index
+    override fun hashCode() = index
+    override fun toString() = "GridLocation($row, $column)"
 }

@@ -38,7 +38,7 @@ fun main() {
     // (::ExampleApplication) to create the application."
     // It will create an ExampleApplication, set everything up, and then run the
     // ExampleApplication that it created.
-    BaseApplication.launch(::ExampleApplication)
+    Application.launch(::ExampleApplication)
 }
 
 /** Example application showing roughly how to create an application, respond to
@@ -61,7 +61,7 @@ class ExampleApplication(
         // initialised GLFW system from which you can poll events and create
         // windows etc.
         instance: GLFWInstance
-): BaseApplication(window, graphics, instance) {
+): Application(window, graphics, instance) {
     // Everything further within this example application is optional and can be
     // removed while still handling the window creation and closing properly.
     // `start()` has a default implementation in BaseApplication equal to the
